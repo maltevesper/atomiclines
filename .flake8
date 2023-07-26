@@ -1,0 +1,26 @@
+[flake8]
+max-line-length = 88
+
+exclude = 
+    # .git .venv ... (all hidden folders)
+    .*
+    build
+    dist
+    __pycache__
+
+extend-ignore = 
+    # allow whitespace around ":" in slices
+    E203
+    # allow ommitting per file docstring, if the file is single class this is pure duplication
+    D100
+    # allow f-strings (rely on the user to limit themselves to variables)
+    WPS305
+    # Naked classes (implicit object inheritance) are fine
+    WPS306
+    # Prefer double quotes (") for strings
+    Q000
+
+per-file-ignores =
+    # S101 - asserts (used for testing)
+    # WPS202 - module members (we might have many tests in a file)
+     tests/*: S101 WPS202

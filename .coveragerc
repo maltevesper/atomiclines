@@ -1,0 +1,11 @@
+[paths]
+source =
+    tester
+
+[run]
+branch = True
+
+[report]
+fail_under = 100
+show_missing = True
+omit = tests/*
