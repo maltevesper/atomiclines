@@ -124,8 +124,9 @@ async def test_stopreader_softstop():
         MockReadable(bytestream_equal_spacing(b"hello", 0.1)),
     )
 
+    atomic_reader.start()
     await asyncio.sleep(0)
-    await atomic_reader.stop_reader(2 * 0.1)
+    await atomic_reader.stop(2 * 0.1)
 
     assert atomic_reader.buffer == b"he"
 
@@ -136,4 +137,4 @@ async def test_reader_exception():
     with pytest.raises(RuntimeError):
         async with AtomicLineReader(ExceptionalReadable()):
             await asyncio.sleep(0)  # allow read to happen -> exception in task
-            await asyncio.sleep(0)  # allow task.done_callback to execute
+            await asyncio.sleep(0.1)  # allow task.done_callback to execute

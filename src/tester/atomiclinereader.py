@@ -1,7 +1,9 @@
 import asyncio
-import contextlib
 import logging
 import typing
+from typing import Any, Coroutine
+
+from tester.backgroundtask import BackgroundTask
 
 logging.getLogger("tester.atomiclinereader")
 
@@ -14,7 +16,7 @@ class Readable(typing.Protocol):
 
 
 # immitate StreamReader.readuntil
-class AtomicLineReader:
+class AtomicLineReader(BackgroundTask):
     """Read lines atomically."""
 
     # TODO: type annotations explicit?
@@ -32,7 +34,7 @@ class AtomicLineReader:
         self._buffer = bytearray()  # TODO ringbuffer, that exposes a memoryview
         self._event_byte_received = asyncio.Event()
         self._streamable = streamable
-        self._reader_active = False
+        # self._reader_active = False
         self._eol = b"\n"
         self._instance_id = self._instances
         AtomicLineReader._instances += 1  # noqa: WPS437 - "private" access is intended
@@ -48,7 +50,7 @@ class AtomicLineReader:
 
         self._logger.addHandler(stderr_handler)
 
-        self.start_reader()
+        super().__init__(self._logger)
         # TODO: allow setting a default timeout
 
     @property
@@ -59,50 +61,6 @@ class AtomicLineReader:
             bytes currently held in buffer
         """
         return self._buffer
-
-    def start_reader(self) -> None:
-        """Start the reader coroutine."""
-        # if self._reader_task is None or self._reader_task.done():
-        if not self._reader_active:
-            self._logger.debug(
-                f"Starting reader for AtomicLineReader {self._instance_id}",
-            )
-            self._reader_active = True
-            self._reader_task = asyncio.create_task(self._reader())
-            self._reader_task.add_done_callback(
-                lambda task: self._reader_exit_check(task),
-            )
-
-    async def stop_reader(self, timeout: float = 0) -> None:
-        """Stop the reader coroutine.
-
-        Args:
-            timeout: timeout in seconds before the reader process is forcefully
-                cancelled.
-        """
-        self._logger.debug(
-            f"Stopping reader for AtomicLineReader {self._instance_id}",
-        )
-        self._reader_active = False
-
-        await asyncio.sleep(timeout)  # allow reader coroutine to schedule and finish
-        self._reader_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await asyncio.wait_for(self._reader_task, 1)
-
-    async def __aenter__(self):
-        """Asynchronous context manager, which starts the reader.
-
-        Returns:
-            AtomicLineReader instance
-        """
-        self.start_reader()
-        return self
-
-    async def __aexit__(self, _exc_type, _exc_val, _exc_tb):
-        """Close the asynchronous context manager and stop the reader."""
-        # TODO: should we only stop the reader if we started it?
-        await self.stop_reader()
 
     async def readline(self, timeout: float | None = None) -> bytes:
         """Read a single line or raise a timeout error.
@@ -118,6 +76,9 @@ class AtomicLineReader:
             the next line from the buffer (!without the eol character)
         """
         # TODO: should we return a Timeout error or an IncompleteReadError?
+        # TODO: should a readline call be cancelable? I.e. if the reader is stopped, how should readline behave?
+        #     -> a) cancel hard immediately <= simpler, least surprise
+        #     -> b) if Timeout is none cancel hard immediately
 
         if timeout == 0:
             if self._buffer.find(self._eol) == -1:
@@ -132,13 +93,21 @@ class AtomicLineReader:
                     await self._event_byte_received.wait()
                     self._event_byte_received.clear()
 
+                    if not self._background_task_active:
+                        raise RuntimeError()  # TODO more appropiate exception, if the reader gets cancelled.
+
         line, _, buffer = self._buffer.partition(self._eol)
         self._buffer = buffer
 
         return line
 
-    async def _reader(self) -> None:
-        while self._reader_active:
+    async def stop(self, timeout: float = 0) -> Coroutine[Any, Any, None]:
+        self.signal_stop()
+        self._event_byte_received.set()
+        await super().stop(timeout)
+
+    async def _background_job(self) -> None:
+        while self._background_task_active:
             # TODO: optimize read one byte or all available bytes
             bytes_read = await self._streamable.read()
 
@@ -148,15 +117,3 @@ class AtomicLineReader:
 
             self._buffer.extend(bytes_read)
             self._event_byte_received.set()
-
-    def _reader_exit_check(self, task: asyncio.Task):
-        self._reader_active = False
-
-        with contextlib.suppress(asyncio.CancelledError):
-            if task.exception() is not None:
-                self._logger.error(
-                    f"An error occured in the reader process. {task.exception()}",
-                )
-        # TODO limit restart attempts based on time to last crash and number of attempts
-        # if self._reader_active:
-        #     self.start_reader()
