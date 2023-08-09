@@ -31,8 +31,6 @@ class LineProcessor(BackgroundTask):
             task_group.create_task(self._reader.stop(timeout))
             task_group.create_task(super().stop(timeout))
 
-        print("stopped processor")
-
     async def _background_job(self) -> None:
         while self._background_task_active:
             try:

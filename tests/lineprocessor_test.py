@@ -169,3 +169,22 @@ async def test_lineprocessor_hardstop():
     assert (
         processor.call_count == 1
     )  # await stop, allows a switch and allows one item to process.
+
+
+async def test_lineprocessor_stopsignal():
+    bytestream = (
+        b"hello\nworld\nok\nmany\nlines\nso\nmany\nmore\nlines\ncoke\nis\nsomething\na"
+    )
+    line_processor = LineProcessor(
+        MockReadable(bytestream_equal_spacing(bytestream, 0.01))
+    )
+
+    def processor(line):
+        line_processor.signal_stop()
+
+    line_processor.add_processor(processor)
+
+    async with asyncio.timeout(0.2):
+        async with line_processor:
+            await asyncio.sleep(0.1)
+            assert line_processor._background_task_active == False

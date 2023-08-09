@@ -1,0 +1,30 @@
+import asyncio
+import time
+from typing import Any, Coroutine
+
+import pytest
+
+from tester.backgroundtask import BackgroundTask
+
+
+class UncooperativeBackgroundJob(BackgroundTask):
+    async def _background_job(self) -> Coroutine[Any, Any, None]:
+        # return super()._background_job()
+        while True:
+            time.sleep(0.1)
+            await asyncio.sleep(0)  # allow cancellation
+
+
+async def test_repeated_start():
+    background_job = UncooperativeBackgroundJob()
+    async with background_job:
+        background_job.start()
+
+    # TODO: what to we assert here?
+
+
+async def test_stop_timeout():
+    background_job = UncooperativeBackgroundJob()
+    async with background_job:
+        with pytest.raises(TimeoutError):
+            await background_job.stop(0.1)

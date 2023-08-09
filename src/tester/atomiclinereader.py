@@ -103,7 +103,7 @@ class AtomicLineReader(BackgroundTask):
 
     async def stop(self, timeout: float = 0) -> Coroutine[Any, Any, None]:
         self.signal_stop()
-        self._event_byte_received.set()
+        self._event_byte_received.set()  # TODO: the donecallback should do this, so a crash is handled too
         await super().stop(timeout)
 
     async def _background_job(self) -> None:
