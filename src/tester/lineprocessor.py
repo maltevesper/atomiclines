@@ -40,6 +40,7 @@ class LineProcessor(BackgroundTask):
 
             for processor in self._processors:
                 # TODO: log? print(f"using processor {processor} on {line}")
-                processor(line)
+                if processor(line):
+                    break
 
             await asyncio.sleep(0)
