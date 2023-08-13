@@ -4,6 +4,8 @@ import logging
 import traceback
 import typing
 
+from tester.log import logger
+
 logging.getLogger("tester.atomiclinereader")
 
 
@@ -22,22 +24,20 @@ class BackgroundTask:
     _background_task: asyncio.Task
     _background_task_active: bool
 
-    def __init__(self, logger: logging.Logger | None = None) -> None:
+    def __init__(self) -> None:
         """Generate a reader.
 
         Args:
             logger: logger to use
         """
         self._background_task_active = False
-        self._logger = logger or logging.getLogger()
-        # self.start()
         # TODO: allow setting a default timeout
 
     def start(self) -> None:
         """Start the reader coroutine."""
         # if self._reader_task is None or self._reader_task.done():
         if not self._background_task_active:
-            self._logger.debug(
+            logger.debug(
                 f"Starting  background task for {repr(super())}",
             )
             self._background_task_active = True
@@ -55,6 +55,9 @@ class BackgroundTask:
             timeout: timeout in seconds before the reader process is forcefully
                 cancelled.
         """
+        logger.debug(
+            f"Starting  background task for {super()!r}",
+        )
         self.signal_stop()
 
         if timeout == 0:
@@ -67,26 +70,14 @@ class BackgroundTask:
         try:
             await asyncio.wait_for(self._background_task, timeout)
         except TimeoutError:
-            self._logger.debug(
-                f"Cancelled background task for {repr(super())} after {timeout} second timeout.",
+            logger.debug(
+                f"Cancelled background task for {super()!r} after {timeout} second timeout.",
             )
             raise
 
-        # await asyncio.sleep(timeout)  # allow reader coroutine to schedule and finish
-
-        # if not self._background_task.done():
-        #     self._logger.debug(
-        #         f"Cancelling background task for {repr(super())} after {timeout} second timeout.",
-        #     )
-
-        #     self._background_task.cancel()
-
-        # with contextlib.suppress(asyncio.CancelledError):
-        #     await asyncio.wait_for(self._background_task, 0.1)
-
     def signal_stop(self) -> None:
-        self._logger.debug(
-            f"Signaling stop to background task for {repr(super())}",
+        logger.debug(
+            f"Signaling stop to background task for {super()!r}",
         )
         self._background_task_active = False
 
@@ -114,10 +105,10 @@ class BackgroundTask:
 
         with contextlib.suppress(asyncio.CancelledError):
             if task.exception() is not None:
-                self._logger.error(
+                logger.error(
                     f"An error occured in the background process. {task.exception()}",
                 )
-                self._logger.error(traceback.format_exception(task.exception()))
+                logger.error(traceback.format_exception(task.exception()))
         # TODO limit restart attempts based on time to last crash and number of attempts
         # if self._reader_active:
         #     self.start_reader()

@@ -1,3 +1,5 @@
-import logging
+import os
 
-logging.getLogger("tester")
+from tester import log
+
+log.try_load_config_from_environment("LINE_LOG_CONFIG")
