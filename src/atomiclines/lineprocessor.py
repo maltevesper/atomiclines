@@ -1,12 +1,8 @@
 import asyncio
-import logging
 from typing import Callable, TypeAlias
 
 from atomiclines.atomiclinereader import AtomicLineReader
 from atomiclines.backgroundtask import BackgroundTask
-
-logging.getLogger().addHandler(logging.StreamHandler())
-logging.getLogger().setLevel(logging.NOTSET)
 
 
 class LineProcessor(BackgroundTask):

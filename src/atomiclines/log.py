@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-logger = logging.getLogger("lines")
+logger = logging.getLogger("atomiclines")
 
 
 def load_config_from_yaml(config_file_path):

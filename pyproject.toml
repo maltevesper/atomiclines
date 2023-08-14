@@ -14,6 +14,7 @@ dev = [
     "pytest-cov>=4.1.0",
     "argcomplete>=3.1.1",
     "ptpython>=3.0.23",
+    "pyroma>=4.2",
 ]
 
 [tool.black]
@@ -43,7 +44,7 @@ junit_logging = "all"
 [project]
 name = "atomic-lines"
 version = "0.1.0"
-description = ""
+description = "Helpers for asynchronous line processing. Some asynchronous readline implementations consume data if a readline() call times out. This is a wrapper for those implementations, guranteeing that either full lines are returned or nothing."
 authors = [
     {name = "Malte Vesper", email = "malte.vesper@gmx.net"},
 ]
@@ -58,9 +59,20 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Framework :: AsyncIO",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+keywords = [
+    "readline",
+    "async",
+]
+
+# [project.urls]
+# Homepage = "https://example.com"
+# Documentation = "https://readthedocs.org"
+# Repository = "https://github.com/me/spam.git"
+# Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
 
 [build-system]
 requires = ["pdm-backend"]
