@@ -1,4 +1,4 @@
-import os
+"""The Tester package."""
 
 from tester import log
 

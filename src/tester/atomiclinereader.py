@@ -3,6 +3,7 @@ import logging
 import typing
 
 from tester.backgroundtask import BackgroundTask
+from tester.exception import LinesTimeoutError
 
 logging.getLogger("tester.atomiclinereader")
 
@@ -37,16 +38,6 @@ class AtomicLineReader(BackgroundTask):
         self._instance_id = self._instances
         AtomicLineReader._instances += 1  # noqa: WPS437 - "private" access is intended
         self._logger = logging.getLogger()
-        #     f"tester.atomiclinereader.instance{self._instance_id}",
-        # )
-        # self._logger.setLevel(logging.INFO)
-
-        # stderr_handler = logging.StreamHandler()
-        # stderr_handler.setFormatter(
-        #     logging.Formatter(fmt="{asctime}: {message}", style="{"),
-        # )
-
-        # self._logger.addHandler(stderr_handler)
 
         super().__init__()
         # TODO: allow setting a default timeout
@@ -67,24 +58,18 @@ class AtomicLineReader(BackgroundTask):
             timeout: timeout in seconds. Defaults to None.
 
         Raises:
-            TimeoutError: if the buffer does not contain an end of line character
+            LinesTimeoutError: if the buffer does not contain an end of line character
                 before the timeout expires
 
         Returns:
             the next line from the buffer (!without the eol character)
         """
         # TODO: should we return a Timeout error or an IncompleteReadError?
-        # TODO: should a readline call be cancelable? I.e. if the reader is stopped,
-        # how should readline behave?
-        #     -> a) cancel hard immediately <= simpler, least surprise
-        #     -> b) if Timeout is none cancel hard immediately
 
         if timeout == 0:
             if self._buffer.find(self._eol) == -1:
-                raise TimeoutError()  # TODO custom timeout error with information
-                # about the timeout
+                raise LinesTimeoutError(timeout)
                 # TODO: asyncio.IncompleteReadError(self._buffer.copy(), None)
-                #      custom exception subclassing asyncio.IncompleteReadError
         else:
             await self._wait_for_line(timeout)
 

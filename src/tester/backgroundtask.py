@@ -4,6 +4,7 @@ import logging
 import traceback
 import typing
 
+from tester.exception import LinesTimeoutError
 from tester.log import logger
 
 logging.getLogger("tester.atomiclinereader")
@@ -20,16 +21,11 @@ class Readable(typing.Protocol):
 class BackgroundTask:
     """Read lines atomically."""
 
-    # TODO: type annotations explicit?
     _background_task: asyncio.Task
     _background_task_active: bool
 
     def __init__(self) -> None:
-        """Generate a reader.
-
-        Args:
-            logger: logger to use
-        """
+        """Generate a reader."""
         self._background_task_active = False
         # TODO: allow setting a default timeout
 
@@ -38,7 +34,7 @@ class BackgroundTask:
         # if self._reader_task is None or self._reader_task.done():
         if not self._background_task_active:
             logger.debug(
-                f"Starting  background task for {repr(super())}",
+                f"Starting  background task for {super()!r}",
             )
             self._background_task_active = True
             self._background_task = asyncio.create_task(self._background_job())
@@ -46,10 +42,20 @@ class BackgroundTask:
                 lambda task: self._job_exit_check(task),
             )
 
+    def signal_stop(self) -> None:
+        """Request a soft stop of the background thread."""
+        logger.debug(
+            f"Signaling stop to background task for {super()!r}",
+        )
+        self._background_task_active = False
+
     async def stop(self, timeout: float = 0) -> None:
         """Stop the reader coroutine.
 
         Raises any errors which might have occured in the background task.
+
+        Raises:
+            LinesTimeoutError: timeout occured
 
         Args:
             timeout: timeout in seconds before the reader process is forcefully
@@ -69,17 +75,12 @@ class BackgroundTask:
 
         try:
             await asyncio.wait_for(self._background_task, timeout)
-        except TimeoutError:
+        except TimeoutError as timeout_exception:
             logger.debug(
-                f"Cancelled background task for {super()!r} after {timeout} second timeout.",
+                f"Cancelled background task for {super()!r} after {timeout} "
+                + "second timeout.",
             )
-            raise
-
-    def signal_stop(self) -> None:
-        logger.debug(
-            f"Signaling stop to background task for {super()!r}",
-        )
-        self._background_task_active = False
+            raise LinesTimeoutError(timeout) from timeout_exception
 
     async def __aenter__(self):
         """Asynchronous context manager, which starts the reader.
@@ -95,10 +96,20 @@ class BackgroundTask:
         # TODO: should we only stop the reader if we started it?
         await self.stop()
 
+    # @abstractmethod
     async def _background_job(self) -> None:
+        """Function to run in the background (as an Asyncio task).
+
+        A typical implemntation should check on self._background_task_active,
+        since this is used to signal a soft stop.
+
+        while self._background_task_active:
+            doSomething()
+
+        Raises:
+            NotImplementedError: _description_
+        """  # noqa: D401
         raise NotImplementedError
-        # while self._background_task_active:
-        #     pass
 
     def _job_exit_check(self, task: asyncio.Task):
         self._background_task_active = False
@@ -109,6 +120,7 @@ class BackgroundTask:
                     f"An error occured in the background process. {task.exception()}",
                 )
                 logger.error(traceback.format_exception(task.exception()))
+                # exception will be raise when task is awaited, no need to raise here
+
         # TODO limit restart attempts based on time to last crash and number of attempts
-        # if self._reader_active:
-        #     self.start_reader()
+        # iff self._reader_active: self.start_reader()

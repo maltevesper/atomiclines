@@ -24,3 +24,11 @@ per-file-ignores =
     # S101 - asserts (used for testing)
     # WPS202 - module members (we might have many tests in a file)
      tests/*: S101 WPS202
+    
+# WPS Config
+
+# allow up to ten methods per class
+max-methods = 10
+
+# flake8-noqa
+noqa-require-code = true
