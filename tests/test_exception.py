@@ -1,4 +1,4 @@
-from tester.exception import LinesTimeoutError
+from atomiclines.exception import LinesTimeoutError
 
 
 def test_timeout():

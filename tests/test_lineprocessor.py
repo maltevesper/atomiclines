@@ -5,7 +5,7 @@ import time
 import typing
 from unittest.mock import DEFAULT, Mock, call
 
-from tester.lineprocessor import LineProcessor
+from atomiclines.lineprocessor import LineProcessor
 
 
 # TODO: factor testhelper methods out in submodules

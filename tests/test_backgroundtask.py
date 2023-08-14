@@ -4,8 +4,8 @@ from typing import Any, Coroutine
 
 import pytest
 
-from tester.backgroundtask import BackgroundTask
-from tester.exception import LinesTimeoutError
+from atomiclines.backgroundtask import BackgroundTask
+from atomiclines.exception import LinesTimeoutError
 
 
 class UncooperativeBackgroundJob(BackgroundTask):

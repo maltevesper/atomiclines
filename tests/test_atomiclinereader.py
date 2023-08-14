@@ -5,8 +5,8 @@ import typing
 
 import pytest
 
-from tester.atomiclinereader import AtomicLineReader
-from tester.exception import LinesTimeoutError
+from atomiclines.atomiclinereader import AtomicLineReader
+from atomiclines.exception import LinesTimeoutError
 
 
 async def bytestream_equal_spacing(bytesequence: bytes, interval_s: float = 0):

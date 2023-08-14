@@ -1,11 +1,9 @@
 import asyncio
-import logging
 import typing
 
-from tester.backgroundtask import BackgroundTask
-from tester.exception import LinesTimeoutError
-
-logging.getLogger("tester.atomiclinereader")
+from atomiclines.backgroundtask import BackgroundTask
+from atomiclines.exception import LinesTimeoutError
+from atomiclines.log import logger
 
 
 class Readable(typing.Protocol):
@@ -37,7 +35,6 @@ class AtomicLineReader(BackgroundTask):
         self._eol = b"\n"
         self._instance_id = self._instances
         AtomicLineReader._instances += 1  # noqa: WPS437 - "private" access is intended
-        self._logger = logging.getLogger()
 
         super().__init__()
         # TODO: allow setting a default timeout
@@ -95,7 +92,7 @@ class AtomicLineReader(BackgroundTask):
 
             if bytes_read == self._eol:
                 line_start = self._buffer.rfind(self._eol) + 1
-                self._logger.info(self._buffer[line_start:])
+                logger.info(self._buffer[line_start:])
 
             self._buffer.extend(bytes_read)
             self._event_byte_received.set()

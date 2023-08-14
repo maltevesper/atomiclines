@@ -1,5 +1,5 @@
 class LinesException(Exception):
-    """Base exception class for Tester library."""
+    """Base exception class for atomiclines library."""
 
 
 class LinesTimeoutError(LinesException):

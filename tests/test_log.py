@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from tester.log import try_load_config_from_environment
+from atomiclines.log import try_load_config_from_environment
 
 
 def test_log_env_config_nonexistent_variable():

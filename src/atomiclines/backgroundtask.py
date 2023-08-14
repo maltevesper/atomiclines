@@ -1,13 +1,10 @@
 import asyncio
 import contextlib
-import logging
 import traceback
 import typing
 
-from tester.exception import LinesTimeoutError
-from tester.log import logger
-
-logging.getLogger("tester.atomiclinereader")
+from atomiclines.exception import LinesTimeoutError
+from atomiclines.log import logger
 
 
 class Readable(typing.Protocol):

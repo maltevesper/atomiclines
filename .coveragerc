@@ -5,7 +5,7 @@
 [run]
 branch = True
 source =
-    tester
+    atomiclines
 
 [report]
 fail_under = 100
