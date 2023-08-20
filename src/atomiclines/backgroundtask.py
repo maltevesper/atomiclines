@@ -23,7 +23,7 @@ class BackgroundTask:
 
     def __init__(self) -> None:
         """Generate a reader."""
-        self._background_task_active = False
+        self._background_task_active = False  # TODO: replace this by self.task.done()?
         # TODO: allow setting a default timeout
 
     def start(self) -> None:
@@ -78,6 +78,10 @@ class BackgroundTask:
                 + "second timeout.",
             )
             raise LinesTimeoutError(timeout) from timeout_exception
+
+    @property
+    def task(self) -> asyncio.Task:
+        return self._background_task
 
     async def __aenter__(self):
         """Asynchronous context manager, which starts the reader.

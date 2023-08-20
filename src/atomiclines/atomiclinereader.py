@@ -75,6 +75,10 @@ class AtomicLineReader(BackgroundTask):
 
         return line
 
+    def start(self) -> None:
+        super().start()
+        self.task.add_done_callback(lambda task: self._event_byte_received.set())
+
     async def stop(self, timeout: float = 0) -> None:
         """Stop reading.
 
@@ -82,7 +86,6 @@ class AtomicLineReader(BackgroundTask):
             timeout: Timeout for a gracefull shutdown. Defaults to 0.
         """
         self.signal_stop()
-        self._event_byte_received.set()  # TODO: the donecallback should do this, so a crash is handled too
         await super().stop(timeout)
 
     async def _background_job(self) -> None:

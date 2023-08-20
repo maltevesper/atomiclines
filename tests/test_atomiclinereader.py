@@ -139,3 +139,16 @@ async def test_reader_exception():
         async with AtomicLineReader(ExceptionalReadable()):
             await asyncio.sleep(0)  # allow read to happen -> exception in task
             await asyncio.sleep(0.1)  # allow task.done_callback to execute
+
+
+async def test_kill_reader_while_awaiting_line():
+    async with AtomicLineReader(
+        MockReadable(bytestream_equal_spacing(b"hello", 0.1)),
+    ) as reader:
+        read_task = asyncio.create_task(reader.readline())
+        await reader.stop()
+
+        # TODO: more specific reader thread got cancelled error
+        async with asyncio.timeout(1):
+            with pytest.raises(RuntimeError):
+                await read_task
