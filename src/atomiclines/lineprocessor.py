@@ -3,6 +3,7 @@ from typing import Callable, TypeAlias
 
 from atomiclines.atomiclinereader import AtomicLineReader
 from atomiclines.backgroundtask import BackgroundTask
+from atomiclines.exception import LinesProcessError
 
 
 class LineProcessor(BackgroundTask):
@@ -66,7 +67,7 @@ class LineProcessor(BackgroundTask):
         while self._background_task_active:
             try:
                 line = await self._reader.readline()
-            except RuntimeError:
+            except LinesProcessError:
                 return
 
             for processor in self._processors:

@@ -2,7 +2,7 @@ import asyncio
 import typing
 
 from atomiclines.backgroundtask import BackgroundTask
-from atomiclines.exception import LinesTimeoutError
+from atomiclines.exception import LinesProcessError, LinesTimeoutError
 from atomiclines.log import logger
 
 
@@ -107,5 +107,5 @@ class AtomicLineReader(BackgroundTask):
                 self._event_byte_received.clear()
 
                 if not self._background_task_active:
-                    raise RuntimeError()  # TODO more appropiate exception, if the
+                    raise LinesProcessError()  # TODO more appropiate exception, if the
                 # reader gets cancelled.

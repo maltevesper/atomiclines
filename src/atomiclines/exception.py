@@ -33,3 +33,7 @@ class LinesTimeoutError(LinesException):
             string representation.
         """
         return f"Timeout of {self.timeout} seconds expired."
+
+
+class LinesProcessError(LinesException):
+    pass

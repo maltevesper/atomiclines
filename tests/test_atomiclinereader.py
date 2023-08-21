@@ -6,7 +6,7 @@ import typing
 import pytest
 
 from atomiclines.atomiclinereader import AtomicLineReader
-from atomiclines.exception import LinesTimeoutError
+from atomiclines.exception import LinesProcessError, LinesTimeoutError
 
 
 async def bytestream_equal_spacing(bytesequence: bytes, interval_s: float = 0):
@@ -148,7 +148,6 @@ async def test_kill_reader_while_awaiting_line():
         read_task = asyncio.create_task(reader.readline())
         await reader.stop()
 
-        # TODO: more specific reader thread got cancelled error
         async with asyncio.timeout(1):
-            with pytest.raises(RuntimeError):
+            with pytest.raises(LinesProcessError):
                 await read_task
