@@ -64,7 +64,7 @@ class LineProcessor(BackgroundTask):
             task_group.create_task(super().stop(timeout))
 
     async def _background_job(self) -> None:
-        while self._background_task_active:
+        while not self._background_task_stop:
             try:
                 line = await self._reader.readline()
             except LinesProcessError:

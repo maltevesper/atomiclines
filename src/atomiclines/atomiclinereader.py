@@ -89,7 +89,7 @@ class AtomicLineReader(BackgroundTask):
         await super().stop(timeout)
 
     async def _background_job(self) -> None:
-        while self._background_task_active:
+        while not self._background_task_stop:
             # TODO: optimize read one byte or all available bytes
             bytes_read = await self._streamable.read()
 
@@ -106,6 +106,5 @@ class AtomicLineReader(BackgroundTask):
                 await self._event_byte_received.wait()
                 self._event_byte_received.clear()
 
-                if not self._background_task_active:
-                    raise LinesProcessError()  # TODO more appropiate exception, if the
-                # reader gets cancelled.
+                if not self.background_task_active:
+                    raise LinesProcessError()

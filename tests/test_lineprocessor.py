@@ -215,4 +215,4 @@ async def test_lineprocessor_stopsignal():
     async with asyncio.timeout(0.2):
         async with line_processor:
             await asyncio.sleep(0.1)
-            assert line_processor._background_task_active is False
+            assert line_processor.background_task_active is False

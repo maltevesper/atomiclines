@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import traceback
 import typing
+from asyncio.events import AbstractEventLoop
 
 from atomiclines.exception import LinesTimeoutError
 from atomiclines.log import logger
@@ -14,26 +15,34 @@ class Readable(typing.Protocol):
         """Read one byte."""
 
 
+class DoneTask(asyncio.Future):
+    def __init__(self, future_result=None) -> None:
+        super().__init__()
+        self.set_result(future_result)
+
+
 # immitate StreamReader.readuntil
 class BackgroundTask:
     """Read lines atomically."""
 
     _background_task: asyncio.Task
-    _background_task_active: bool
 
     def __init__(self) -> None:
         """Generate a reader."""
-        self._background_task_active = False  # TODO: replace this by self.task.done()?
-        # TODO: allow setting a default timeout
+        self._background_task = DoneTask()  # asyncio.create_task(asyncio.sleep(0))
+
+    @property
+    def background_task_active(self) -> bool:
+        return not self._background_task.done()
 
     def start(self) -> None:
         """Start the reader coroutine."""
         # if self._reader_task is None or self._reader_task.done():
-        if not self._background_task_active:
+        if not self.background_task_active:
             logger.debug(
                 f"Starting  background task for {super()!r}",
             )
-            self._background_task_active = True
+            self._background_task_stop = False
             self._background_task = asyncio.create_task(self._background_job())
             self._background_task.add_done_callback(
                 lambda task: self._job_exit_check(task),
@@ -44,7 +53,7 @@ class BackgroundTask:
         logger.debug(
             f"Signaling stop to background task for {super()!r}",
         )
-        self._background_task_active = False
+        self._background_task_stop = True
 
     async def stop(self, timeout: float = 0) -> None:
         """Stop the reader coroutine.
@@ -101,10 +110,10 @@ class BackgroundTask:
     async def _background_job(self) -> None:
         """Function to run in the background (as an Asyncio task).
 
-        A typical implemntation should check on self._background_task_active,
+        A typical implemntation should check on self._background_task_stop,
         since this is used to signal a soft stop.
 
-        while self._background_task_active:
+        while not self._background_task_stop:
             doSomething()
 
         Raises:
@@ -113,8 +122,6 @@ class BackgroundTask:
         raise NotImplementedError
 
     def _job_exit_check(self, task: asyncio.Task):
-        self._background_task_active = False
-
         with contextlib.suppress(asyncio.CancelledError):
             if task.exception() is not None:
                 logger.error(

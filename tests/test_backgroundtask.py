@@ -28,4 +28,4 @@ async def test_stop_timeout():
     background_job = UncooperativeBackgroundJob()
     async with background_job:
         with pytest.raises(LinesTimeoutError):
-            await background_job.stop(0.1)
+            await background_job.stop(0.01)
