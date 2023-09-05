@@ -2,11 +2,13 @@ import asyncio
 import contextlib
 import io
 import typing
+from logging import INFO
 
 import pytest
 
 from atomiclines.atomiclinereader import AtomicLineReader
 from atomiclines.exception import LinesProcessError, LinesTimeoutError
+from atomiclines.log import logger
 
 
 async def bytestream_equal_spacing(bytesequence: bytes, interval_s: float = 0):
@@ -21,6 +23,23 @@ async def bytestream_equal_spacing(bytesequence: bytes, interval_s: float = 0):
     """
     for byte in bytesequence:
         yield bytes([byte])
+        await asyncio.sleep(interval_s)
+
+
+async def multibytestream_equal_spacing(bytesequence: bytes, interval_s: float = 0):
+    """Return bytes from bytesequence and add delay between.
+
+    Args:
+        bytesequence: byte sequence to yeild from
+        interval_s: delay between bytes. Defaults to 0.
+
+    Yields:
+        single bytes from bytesequence.
+    """
+    byteiter = iter(bytesequence)
+
+    for byte_chunk in zip(byteiter, byteiter):
+        yield bytes(byte_chunk)
         await asyncio.sleep(interval_s)
 
 
@@ -90,9 +109,24 @@ async def test_readline():
             await atomic_reader.readline(0.1)
 
 
+async def test_readline_multibyte(caplog: pytest.LogCaptureFixture):
+    """Test readline with a timeout > 0."""
+    bytestream = b"hello\nworld\n\n\n."
+    bytesreader = io.BytesIO(bytestream)
+
+    with caplog.at_level(INFO, logger.name):
+        async with AtomicLineReader(
+            MockReadable(multibytestream_equal_spacing(bytestream, 0.01)),
+        ) as atomic_reader:
+            assert bytesreader.readline().strip() == await atomic_reader.readline(0.1)
+            assert bytesreader.readline().strip() == await atomic_reader.readline(0.1)
+            await asyncio.sleep(0.1)
+
+    assert caplog.messages == list(map(str, bytestream.split(b"\n")[:-1]))
+
+
 async def test_readline_fastpath():
     """Make sure readline with timeout 0 works."""
-    # with pytest.raises(TimeoutError):
     bytestream = b"hello\nworld\n."
     bytesreader = io.BytesIO(bytestream)
 

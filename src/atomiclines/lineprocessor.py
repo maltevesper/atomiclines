@@ -8,10 +8,28 @@ from atomiclines.log import logger
 
 
 class LineHolder:
+    """Class passed between the processor function on a LineProcessor.
+
+    Allows either modifying the line, or adding additonal properties.
+    """
+
     def __init__(self, line: bytes) -> None:
+        """Init.
+
+        Args:
+            line: the initial line
+        """
         self.line = line
 
     def __eq__(self, other):
+        """Comparison function.
+
+        Args:
+            other: object to compare against
+
+        Returns:
+            true if all instance properties are equal and a subclass of LineHolder
+        """
         if isinstance(other, self.__class__):
             return self.__dict__ == other.__dict__
 

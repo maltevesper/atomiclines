@@ -35,7 +35,6 @@ class AtomicLineReader(BackgroundTask):
         self._eol = b"\n"
         self._instance_id = self._instances
         AtomicLineReader._instances += 1  # noqa: WPS437 - "private" access is intended
-
         super().__init__()
         # TODO: allow setting a default timeout
 
@@ -76,6 +75,10 @@ class AtomicLineReader(BackgroundTask):
         return line
 
     def start(self) -> None:
+        """Start the background reader process.
+
+        Prefer using this as a context manager whenever you can.
+        """
         super().start()
         self.task.add_done_callback(lambda task: self._event_byte_received.set())
 
@@ -90,14 +93,20 @@ class AtomicLineReader(BackgroundTask):
 
     async def _background_job(self) -> None:
         while not self._background_task_stop:
-            # TODO: optimize read one byte or all available bytes
             bytes_read = await self._streamable.read()
 
-            if bytes_read == self._eol:
-                line_start = self._buffer.rfind(self._eol) + 1
-                logger.info(self._buffer[line_start:])
-
             self._buffer.extend(bytes_read)
+
+            if self._eol in bytes_read:
+                old_data_end = -len(bytes_read)
+                line_start = self._buffer.rfind(self._eol, None, old_data_end) + 1
+                line_end = self._buffer.find(self._eol, line_start)
+
+                while line_end != -1:
+                    logger.info(bytes(self._buffer[line_start:line_end]))
+                    line_start = line_end + 1
+                    line_end = self._buffer.find(self._eol, line_start)
+
             self._event_byte_received.set()
 
     async def _wait_for_line(self, timeout: float | None = None):

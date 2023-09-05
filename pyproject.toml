@@ -32,7 +32,7 @@ disallow_untyped_defs = true
 [tool.pytest.ini_options]
 minversion = "6.0"
 # log_cli = true
-# log_level = NOTSET
+# log_level = "NOTSET"
 #  -q
 addopts = "-ra --tb=short  --durations=10 --durations-min=1.0 --cov --cov-report html --junitxml=junit.xml"
 testpaths = [
