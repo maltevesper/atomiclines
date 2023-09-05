@@ -166,13 +166,14 @@ async def test_stopreader_softstop():
     assert atomic_reader.buffer == b"he"
 
 
-async def test_reader_exception():
+async def test_reader_exception(caplog: pytest.LogCaptureFixture):
     """Make sure a reader exception is handled correctly."""
-    # TODO check that done callback logs the error
     with pytest.raises(RuntimeError):
         async with AtomicLineReader(ExceptionalReadable()):
             await asyncio.sleep(0)  # allow read to happen -> exception in task
             await asyncio.sleep(0.1)  # allow task.done_callback to execute
+
+    assert caplog.messages[0].startswith("An error occured in the background process.")
 
 
 async def test_kill_reader_while_awaiting_line():
