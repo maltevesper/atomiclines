@@ -5,7 +5,7 @@ import time
 import typing
 from unittest.mock import DEFAULT, Mock, call
 
-from atomiclines.lineprocessor import LineProcessor
+from atomiclines.lineprocessor import LineHolder, LineProcessor
 
 
 # TODO: factor testhelper methods out in submodules
@@ -83,6 +83,17 @@ class MockReadable:
         await asyncio.Future()  # run forever
 
 
+async def test_lineholder_eq():
+    line_a = LineHolder(b"a")
+    line_b = LineHolder(b"b")
+
+    assert line_a != line_b
+    assert line_a == line_a
+    assert line_a == LineHolder(b"a")
+
+    assert not line_a == b"a"
+
+
 async def test_lineprocessor():
     bytestream = b"hello\nworld\nok"
     processor = Mock(return_value=None)
@@ -94,7 +105,8 @@ async def test_lineprocessor():
         await asyncio.sleep(0)
 
     assert processor.call_args_list == [
-        call(line_match[1]) for line_match in re.finditer(b"(.*?)\n", bytestream)
+        call(LineHolder(line_match[1]))
+        for line_match in re.finditer(b"(.*?)\n", bytestream)
     ]
 
     # await line_processor.stop()
@@ -117,14 +129,15 @@ async def test_lineprocessor_remove():
         await asyncio.sleep(0.1)
 
     assert processor_a.call_args_list == [
-        call(line_match[1])
+        call(LineHolder(line_match[1]))
         for line_match in re.finditer(
             b"(.*?)\n",
             bytestream_start + bytestream_extension,
         )
     ]
     assert processor_b.call_args_list == [
-        call(line_match[1]) for line_match in re.finditer(b"(.*?)\n", bytestream_start)
+        call(LineHolder(line_match[1]))
+        for line_match in re.finditer(b"(.*?)\n", bytestream_start)
     ]
 
 
@@ -132,8 +145,8 @@ async def test_lineprocessor_no_bubble():
     bytestream_start = b"hello\nworld\nok"
     bytestream = RefillableBytestream(bytestream_start)
 
-    def filtering_processor(line):
-        return line == b"world"
+    def filtering_processor(line: LineHolder):
+        return line.line == b"world"
 
     processor_a = Mock(side_effect=filtering_processor, return_value=DEFAULT)
     processor_b = Mock(return_value=None)
@@ -145,14 +158,14 @@ async def test_lineprocessor_no_bubble():
         await asyncio.sleep(0.1)
 
     assert processor_a.call_args_list == [
-        call(line_match[1])
+        call(LineHolder(line_match[1]))
         for line_match in re.finditer(
             b"(.*?)\n",
             bytestream_start,
         )
     ]
     assert processor_b.call_args_list == [
-        call(line_match[1])
+        call(LineHolder(line_match[1]))
         for line_match in re.finditer(b"(.*?)\n", bytestream_start)
         if line_match[1] != b"world"
     ]
@@ -216,3 +229,27 @@ async def test_lineprocessor_stopsignal():
         async with line_processor:
             await asyncio.sleep(0.1)
             assert line_processor.background_task_active is False
+
+
+async def test_lineprocessor_modification():
+    bytestream_start = b"hello\nworld\nok"
+    bytestream = RefillableBytestream(bytestream_start)
+
+    def uppercase_processor(line: LineHolder):
+        line.line = line.line.upper()
+
+    mock_postprocessor = Mock(return_value=None)
+    line_processor = LineProcessor(MockReadable(bytestream.stream()))
+    line_processor.add_processor(uppercase_processor)
+    line_processor.add_processor(mock_postprocessor)
+
+    async with line_processor:
+        await asyncio.sleep(0.1)
+
+    assert mock_postprocessor.call_args_list == [
+        call(LineHolder(line_match[1].upper()))
+        for line_match in re.finditer(
+            b"(.*?)\n",
+            bytestream_start,
+        )
+    ]

@@ -4,12 +4,24 @@ from typing import Callable, TypeAlias
 from atomiclines.atomiclinereader import AtomicLineReader
 from atomiclines.backgroundtask import BackgroundTask
 from atomiclines.exception import LinesProcessError
+from atomiclines.log import logger
+
+
+class LineHolder:
+    def __init__(self, line: bytes) -> None:
+        self.line = line
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.__dict__ == other.__dict__
+
+        return False
 
 
 class LineProcessor(BackgroundTask):
     """Run function(s) for each incomming line."""
 
-    processor_type: TypeAlias = Callable[[bytes], bool | None]
+    processor_type: TypeAlias = Callable[[LineHolder], bool | None]
 
     def __init__(self, streamable) -> None:
         """Init.
@@ -70,9 +82,12 @@ class LineProcessor(BackgroundTask):
             except LinesProcessError:
                 return
 
+            line_object = LineHolder(line)
+
             for processor in self._processors:
-                # TODO: log? print(f"using processor {processor} on {line}")
-                if processor(line):
+                logger.debug(f"using processor {processor} on {line}")
+
+                if processor(line_object):
                     break
 
             await asyncio.sleep(0)

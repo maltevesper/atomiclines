@@ -29,7 +29,7 @@ class BackgroundTask:
 
     def __init__(self) -> None:
         """Generate a reader."""
-        self._background_task = DoneTask()  # asyncio.create_task(asyncio.sleep(0))
+        self._background_task = DoneTask()
 
     @property
     def background_task_active(self) -> bool:
@@ -37,7 +37,6 @@ class BackgroundTask:
 
     def start(self) -> None:
         """Start the reader coroutine."""
-        # if self._reader_task is None or self._reader_task.done():
         if not self.background_task_active:
             logger.debug(
                 f"Starting  background task for {super()!r}",
@@ -103,7 +102,6 @@ class BackgroundTask:
 
     async def __aexit__(self, _exc_type, _exc_val, _exc_tb):
         """Close the asynchronous context manager and stop the reader."""
-        # TODO: should we only stop the reader if we started it?
         await self.stop()
 
     # @abstractmethod

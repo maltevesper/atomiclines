@@ -10,10 +10,9 @@ from atomiclines.exception import LinesTimeoutError
 
 class UncooperativeBackgroundJob(BackgroundTask):
     async def _background_job(self) -> Coroutine[Any, Any, None]:
-        # return super()._background_job()
         while True:
             time.sleep(0.1)
-            await asyncio.sleep(0)  # allow cancellation
+            await asyncio.sleep(0)
 
 
 async def test_repeated_start():
