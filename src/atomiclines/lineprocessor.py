@@ -39,7 +39,10 @@ class LineHolder:
 class LineProcessor(BackgroundTask):
     """Run function(s) for each incomming line."""
 
-    processor_type: TypeAlias = Callable[[LineHolder], bool | None]
+    processor_type: TypeAlias = Callable[
+        [LineHolder],
+        bool | None,  # noqa: WPS465 this is a typehint
+    ]
 
     def __init__(self, streamable: Readable) -> None:
         """Init.

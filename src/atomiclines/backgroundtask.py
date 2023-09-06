@@ -16,7 +16,14 @@ class Readable(Protocol):
 
 
 class DoneTask(asyncio.Future):
+    """A Future which has completed."""
+
     def __init__(self, future_result: Any = None) -> None:
+        """Initialize completed Future.
+
+        Args:
+            future_result: Future return value. Defaults to None.
+        """
         super().__init__()
         self.set_result(future_result)
 
@@ -33,6 +40,11 @@ class BackgroundTask:
 
     @property
     def background_task_active(self) -> bool:
+        """Check if the background task is (still) running.
+
+        Returns:
+            bool indication if the background task is running.
+        """
         return not self._background_task.done()
 
     def start(self) -> None:
@@ -89,6 +101,13 @@ class BackgroundTask:
 
     @property
     def task(self) -> asyncio.Future:
+        """Get the background task.
+
+        Usefull for adding done callbacks (add_done_callback).
+
+        Returns:
+            the background task object
+        """
         return self._background_task
 
     async def __aenter__(self) -> Self:

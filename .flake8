@@ -24,6 +24,8 @@ per-file-ignores =
     # S101 - asserts (used for testing)
     # WPS202 - module members (we might have many tests in a file)
      tests/*: S101 WPS202
+     # WPS412 - allow loading the logging config file from environment variable on module load
+     src/atomiclines/__init__.py: WPS412
     
 # WPS Config
 
