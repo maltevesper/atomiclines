@@ -6,7 +6,7 @@ groups = ["default", "dev"]
 cross_platform = true
 static_urls = false
 lock_version = "4.3"
-content_hash = "sha256:fe4f6f9a1d15dc749280aadb6083f98b939172e0a68131b2b4e8c5ffa49f7944"
+content_hash = "sha256:ec330fac8561e72e4e6bc8b76069e151211d9a1a18d1d0c56446f45a3e0d3d3b"
 
 [[package]]
 name = "appdirs"
@@ -1002,6 +1002,15 @@ summary = "Canonical source for classifiers on PyPI (pypi.org)."
 files = [
     {file = "trove-classifiers-2023.8.7.tar.gz", hash = "sha256:c9f2a0a85d545e5362e967e4f069f56fddfd91215e22ffa48c66fb283521319a"},
     {file = "trove_classifiers-2023.8.7-py3-none-any.whl", hash = "sha256:a676626a31286130d56de2ea1232484df97c567eb429d56cfcb0637e681ecf09"},
+]
+
+[[package]]
+name = "types-pyyaml"
+version = "6.0.12.11"
+summary = "Typing stubs for PyYAML"
+files = [
+    {file = "types-PyYAML-6.0.12.11.tar.gz", hash = "sha256:7d340b19ca28cddfdba438ee638cd4084bde213e501a3978738543e27094775b"},
+    {file = "types_PyYAML-6.0.12.11-py3-none-any.whl", hash = "sha256:a461508f3096d1d5810ec5ab95d7eeecb651f3a15b71959999988942063bf01d"},
 ]
 
 [[package]]

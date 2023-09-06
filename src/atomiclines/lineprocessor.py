@@ -1,7 +1,7 @@
 import asyncio
 from typing import Callable, TypeAlias
 
-from atomiclines.atomiclinereader import AtomicLineReader
+from atomiclines.atomiclinereader import AtomicLineReader, Readable
 from atomiclines.backgroundtask import BackgroundTask
 from atomiclines.exception import LinesProcessError
 from atomiclines.log import logger
@@ -21,7 +21,7 @@ class LineHolder:
         """
         self.line = line
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """Comparison function.
 
         Args:
@@ -41,7 +41,7 @@ class LineProcessor(BackgroundTask):
 
     processor_type: TypeAlias = Callable[[LineHolder], bool | None]
 
-    def __init__(self, streamable) -> None:
+    def __init__(self, streamable: Readable) -> None:
         """Init.
 
         Args:
@@ -49,7 +49,7 @@ class LineProcessor(BackgroundTask):
         """
         self._streamable = streamable
         self._reader = AtomicLineReader(streamable)
-        self._processors = []
+        self._processors: list[LineProcessor.processor_type] = []
         super().__init__()
 
     def start(self) -> None:
@@ -60,7 +60,7 @@ class LineProcessor(BackgroundTask):
         self._reader.start()
         super().start()
 
-    def add_processor(self, processor: processor_type):
+    def add_processor(self, processor: processor_type) -> None:
         """Add a callable to process lines.
 
         Callable will be passed the line as its only argument.
@@ -72,7 +72,7 @@ class LineProcessor(BackgroundTask):
         """
         self._processors.append(processor)
 
-    def remove_processor(self, processor: processor_type):
+    def remove_processor(self, processor: processor_type) -> None:
         """Remove a processor (only the first occurance).
 
         Args:
@@ -103,7 +103,7 @@ class LineProcessor(BackgroundTask):
             line_object = LineHolder(line)
 
             for processor in self._processors:
-                logger.debug(f"using processor {processor} on {line}")
+                logger.debug(f"using processor {processor} on {line!r}")
 
                 if processor(line_object):
                     break

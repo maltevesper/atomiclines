@@ -9,7 +9,7 @@ from atomiclines.log import logger
 class Readable(typing.Protocol):
     """Readable protocol."""
 
-    def read(self) -> bytes:
+    async def read(self) -> bytes:
         """Read one byte."""
 
 
@@ -109,7 +109,7 @@ class AtomicLineReader(BackgroundTask):
 
             self._event_byte_received.set()
 
-    async def _wait_for_line(self, timeout: float | None = None):
+    async def _wait_for_line(self, timeout: float | None = None) -> None:
         async with asyncio.timeout(timeout):
             while self._buffer.find(self._eol) == -1:
                 await self._event_byte_received.wait()

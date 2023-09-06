@@ -1,14 +1,14 @@
 import asyncio
 import contextlib
 import traceback
-import typing
-from asyncio.events import AbstractEventLoop
+from types import TracebackType
+from typing import Any, Protocol, Self, Type
 
 from atomiclines.exception import LinesTimeoutError
 from atomiclines.log import logger
 
 
-class Readable(typing.Protocol):
+class Readable(Protocol):
     """Readable protocol."""
 
     def read(self) -> bytes:
@@ -16,7 +16,7 @@ class Readable(typing.Protocol):
 
 
 class DoneTask(asyncio.Future):
-    def __init__(self, future_result=None) -> None:
+    def __init__(self, future_result: Any = None) -> None:
         super().__init__()
         self.set_result(future_result)
 
@@ -25,7 +25,7 @@ class DoneTask(asyncio.Future):
 class BackgroundTask:
     """Read lines atomically."""
 
-    _background_task: asyncio.Task
+    _background_task: asyncio.Task | asyncio.Future
 
     def __init__(self) -> None:
         """Generate a reader."""
@@ -88,10 +88,10 @@ class BackgroundTask:
             raise LinesTimeoutError(timeout) from timeout_exception
 
     @property
-    def task(self) -> asyncio.Task:
+    def task(self) -> asyncio.Future:
         return self._background_task
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Self:
         """Asynchronous context manager, which starts the reader.
 
         Returns:
@@ -100,7 +100,12 @@ class BackgroundTask:
         self.start()
         return self
 
-    async def __aexit__(self, _exc_type, _exc_val, _exc_tb):
+    async def __aexit__(
+        self,
+        _exc_type: Type[BaseException] | None,
+        _exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
+    ) -> None:
         """Close the asynchronous context manager and stop the reader."""
         await self.stop()
 
@@ -119,7 +124,7 @@ class BackgroundTask:
         """  # noqa: D401
         raise NotImplementedError
 
-    def _job_exit_check(self, task: asyncio.Task):
+    def _job_exit_check(self, task: asyncio.Task) -> None:
         with contextlib.suppress(asyncio.CancelledError):
             if task.exception() is not None:
                 logger.error(

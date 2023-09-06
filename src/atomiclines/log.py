@@ -8,7 +8,7 @@ import yaml
 logger = logging.getLogger("atomiclines")
 
 
-def load_config_from_yaml(config_file_path):
+def load_config_from_yaml(config_file_path: str | os.PathLike) -> None:
     """Load configuration from file.
 
     Args:
@@ -24,7 +24,7 @@ def load_config_from_yaml(config_file_path):
     DictConfigurator(configuration).configure()
 
 
-def try_load_config_from_environment(environment_variable: str):
+def try_load_config_from_environment(environment_variable: str) -> None:
     """Load configuration from file specified in environment variable.
 
     Args:

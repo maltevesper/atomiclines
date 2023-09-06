@@ -18,7 +18,7 @@ class LinesTimeoutError(LinesException):
         super().__init__(timeout)
 
     @property
-    def timeout(self):
+    def timeout(self) -> float:
         """Timeout as a read only property.
 
         Returns:
