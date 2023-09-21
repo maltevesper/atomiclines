@@ -4,6 +4,10 @@ max-line-length = 88
 exclude = 
     # .git .venv ... (all hidden folders)
     .*
+    .mypy_cache
+    .pdm-build
+    .pytest_cache
+    .venv
     build
     dist
     __pycache__
