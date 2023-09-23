@@ -51,7 +51,7 @@ junit_logging = "all"
 
 [project]
 name = "atomic-lines"
-version = "0.1.1-beta"
+version = "0.1.1-rc1"
 description = "Helpers for asynchronous line processing. Some asynchronous readline implementations consume data if a readline() call times out. This is a wrapper for those implementations, guranteeing that either full lines are returned or nothing."
 authors = [
     {name = "Malte Vesper", email = "malte.vesper@gmx.net"},
@@ -78,9 +78,9 @@ keywords = [
 
 [project.urls]
 # Homepage = "https://example.com"
-# Documentation = "https://readthedocs.org"
-Repository = "https://github.com/me/spam.git"
-Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+Documentation = "https://maltevesper.github.io/atomiclines/"
+Repository = "https://github.com/maltevesper/atomiclines"
+Changelog = "https://github.com/maltevesper/atomiclines/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["pdm-backend"]
