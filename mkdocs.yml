@@ -1,5 +1,8 @@
 site_name: Atomic Lines
 
+repo_url: https://github.com/maltevesper/atomiclines
+edit_uri: edit/main/docs/
+
 nav:
   - Intro: index.md
   - Code Reference: reference/
@@ -7,6 +10,8 @@ nav:
 theme:
   name: material
   features:
+    - content.action.edit
+    #- content.action.view
     - content.code.copy
     - content.code.annotate
     - content.tabs.link
@@ -16,6 +21,8 @@ theme:
     - navigation.tracking
     #    - toc.integrate
     - toc.follow
+  icon:
+    repo: fontawesome/brands/github
 
 plugins:
   - search
