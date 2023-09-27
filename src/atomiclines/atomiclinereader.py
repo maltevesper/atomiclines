@@ -95,6 +95,10 @@ class AtomicLineReader(BackgroundTask):
         while not self._background_task_stop:
             bytes_read = await self._streamable.read()
 
+            if not len(bytes_read):
+                await asyncio.sleep(0)
+                continue
+
             self._buffer.extend(bytes_read)
 
             if self._eol in bytes_read:
@@ -112,8 +116,8 @@ class AtomicLineReader(BackgroundTask):
     async def _wait_for_line(self, timeout: float | None = None) -> None:
         async with asyncio.timeout(timeout):
             while self._buffer.find(self._eol) == -1:
-                await self._event_byte_received.wait()
-                self._event_byte_received.clear()
-
                 if not self.background_task_active:
                     raise LinesProcessError()
+
+                await self._event_byte_received.wait()
+                self._event_byte_received.clear()
