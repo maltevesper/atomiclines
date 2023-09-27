@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1-rc2] - 2023-09-27
+Fix issue with hangs.
+
+### Added
+ - support an EOF exception to shut down reader
+
+### Fixed
+ - LineReader hangs at EOF of networkstream/when read() returns 0 bytes
+
+### Changed
+ - AtomicLineReader.readline now reraises the background read processes exceptions if no further lines are in the buffer
+   (i.e. if readline is bound to fail because no data is available and the backgroundprocess has crashed)
+
 ## [0.1.1-rc1] - 2023-09-21
 Added mkdocs documentation, allow to import classes directly from root module
 

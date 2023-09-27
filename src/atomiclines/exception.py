@@ -2,6 +2,10 @@ class LinesException(Exception):
     """Base exception class for atomiclines library."""
 
 
+class LinesEOFError(LinesException):
+    """Exception to report EOF from reader."""
+
+
 class LinesTimeoutError(LinesException):
     """Timeout exception.
 

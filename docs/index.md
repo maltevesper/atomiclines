@@ -39,7 +39,7 @@ async def main():
     readable = SerialReadable("/dev/ttyUSB0")
 
     processor = LineProcessor(readable)
-    processor.add_processor(print)  # (1)!
+    processor.add_processor(lambda x: print(x.line))  # (1)!
 
     async with processor:  # (2)!
         readable._serial.write(b"help\r\n")  # (3)!

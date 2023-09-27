@@ -7,7 +7,7 @@ from logging import INFO
 import pytest
 
 from atomiclines.atomiclinereader import AtomicLineReader
-from atomiclines.exception import LinesProcessError, LinesTimeoutError
+from atomiclines.exception import LinesEOFError, LinesProcessError, LinesTimeoutError
 from atomiclines.log import logger
 
 
@@ -56,6 +56,20 @@ async def bytestream_zero_delay(bytesequence: bytes):
         yield bytes([byte])
 
 
+async def bytestream_zero_reads(bytesequence: bytes):
+    """Return single bytes from a bytes object and empty reads inbetween.
+
+    Args:
+        bytesequence: bytesequence to iterate over
+
+    Yields:
+        single bytes from bytesequence or empty bytes object
+    """
+    for byte in bytesequence:
+        yield bytes([byte])
+        yield bytes()
+
+
 class MockReadable:
     """A mock readable returning data from a generator."""
 
@@ -93,6 +107,19 @@ class ExceptionalReadable:
         raise RuntimeError
 
 
+class EOFReadable:
+    """A readable which raises EOF at the end."""
+
+    def __init__(self, data_stream: typing.AsyncGenerator[bytes, None]) -> None:
+        self._data_stream = data_stream
+
+    async def read(self):
+        try:
+            return await anext(self._data_stream)
+        except StopAsyncIteration:
+            raise LinesEOFError
+
+
 async def test_readline():
     """Test readline with a timeout > 0."""
     # with pytest.raises(TimeoutError):
@@ -123,6 +150,59 @@ async def test_readline_multibyte(caplog: pytest.LogCaptureFixture):
             await asyncio.sleep(0.1)
 
     assert caplog.messages == list(map(str, bytestream.split(b"\n")[:-1]))
+
+
+async def test_readline_0bytes():
+    pass
+
+
+async def test_readline_eof():
+    bytestream = b"hello\nworld"
+    bytesreader = io.BytesIO(bytestream)
+    reached_end = False
+
+    with pytest.raises(LinesEOFError):
+        async with AtomicLineReader(
+            EOFReadable(bytestream_zero_delay(bytestream)),
+        ) as atomic_reader:
+            assert bytesreader.readline().strip() == await atomic_reader.readline(
+                timeout=0.1,
+            )
+            # await asyncio.sleep(0.1)
+            assert bytesreader.readline().strip() == await atomic_reader.readline(
+                timeout=0.1,
+            )
+
+            with pytest.raises(LinesEOFError):
+                await atomic_reader.readline(timeout=5)
+
+            reached_end = True
+
+    assert reached_end  # make sure enough of the test code inside the pytest.raises is executed
+
+
+async def test_readline_eof_eol():
+    bytestream = b"hello\nworld\n"
+    bytesreader = io.BytesIO(bytestream)
+    reached_end = False
+
+    with pytest.raises(LinesEOFError):
+        async with AtomicLineReader(
+            EOFReadable(bytestream_zero_reads(bytestream)),
+        ) as atomic_reader:
+            assert bytesreader.readline().strip() == await atomic_reader.readline(
+                timeout=0.1,
+            )
+            assert bytesreader.readline().strip() == await atomic_reader.readline(
+                timeout=0.1,
+            )
+
+            with pytest.raises(LinesEOFError):
+                await atomic_reader.readline(timeout=5)
+
+            reached_end = True
+
+    assert reached_end
 
 
 async def test_readline_fastpath():
@@ -184,5 +264,8 @@ async def test_kill_reader_while_awaiting_line():
         await reader.stop()
 
         async with asyncio.timeout(1):
-            with pytest.raises(LinesProcessError):
+            with pytest.raises(asyncio.exceptions.CancelledError):
+                await reader.readline(0)
+
+            with pytest.raises(asyncio.exceptions.CancelledError):
                 await read_task

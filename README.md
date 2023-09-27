@@ -1,14 +1,13 @@
 # Atomic-Lines
 
-# Warning
-The project is in its proof of concept phase: it might cease to exist, and the code quality is lacking. Documentation is currently nonexisting. Use at your own risk.
-
 # Intro
 A toy project, wrapping asynchronous one byte readers into a sane(?) readline semantic.
 If no end of line is found the request is considered timedout, and the data is kept in the buffer,
 otherwise lines are returned (without the EOL character) for further processing.
 
 The main goal is to help wrap i.e. serial access or other apis which consume data if readline times out.
+
+For more userfriendly documentation see https://maltevesper.github.io/atomiclines/.
 
 # Logging configuration
 

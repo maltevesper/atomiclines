@@ -2,7 +2,7 @@ import asyncio
 import typing
 
 from atomiclines.backgroundtask import BackgroundTask
-from atomiclines.exception import LinesProcessError, LinesTimeoutError
+from atomiclines.exception import LinesEOFError, LinesProcessError, LinesTimeoutError
 from atomiclines.log import logger
 
 
@@ -64,7 +64,11 @@ class AtomicLineReader(BackgroundTask):
 
         if timeout == 0:
             if self._buffer.find(self._eol) == -1:
-                raise LinesTimeoutError(timeout)
+                if self.background_task_active:
+                    raise LinesTimeoutError(timeout)
+
+                self.raise_for_background_task()
+                raise LinesProcessError()  # pragma: no cover the background task on the line before should always raise
                 # TODO: asyncio.IncompleteReadError(self._buffer.copy(), None)
         else:
             await self._wait_for_line(timeout)
@@ -92,14 +96,27 @@ class AtomicLineReader(BackgroundTask):
         await super().stop(timeout)
 
     async def _background_job(self) -> None:
+        eof_error: LinesEOFError | None = None
+
         while not self._background_task_stop:
-            bytes_read = await self._streamable.read()
+            try:
+                bytes_read = await self._streamable.read()
+            except LinesEOFError as eof:
+                logger.info(f"Got EOF on AtomicLineReader {self._instance_id}.")
+                eof_error = eof
 
-            if not len(bytes_read):
-                await asyncio.sleep(0)
-                continue
+                bytes_read = (
+                    b""  # ensure that the following code does not assume any bytes read
+                )
 
-            self._buffer.extend(bytes_read)
+                if len(self._buffer) and self._buffer[-1:] != self._eol:
+                    self._buffer.extend(self._eol)
+            else:
+                if not len(bytes_read):
+                    await asyncio.sleep(0)
+                    continue
+
+                self._buffer.extend(bytes_read)
 
             if self._eol in bytes_read:
                 old_data_end = -len(bytes_read)
@@ -113,11 +130,17 @@ class AtomicLineReader(BackgroundTask):
 
             self._event_byte_received.set()
 
+            if eof_error is not None:
+                await asyncio.sleep(0)
+                raise eof_error
+
     async def _wait_for_line(self, timeout: float | None = None) -> None:
         async with asyncio.timeout(timeout):
             while self._buffer.find(self._eol) == -1:
                 if not self.background_task_active:
-                    raise LinesProcessError()
+                    self.raise_for_background_task()
+
+                    raise LinesProcessError()  # In case the background task stopped without raising an exception
 
                 await self._event_byte_received.wait()
                 self._event_byte_received.clear()

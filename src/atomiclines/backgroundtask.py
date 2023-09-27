@@ -47,6 +47,16 @@ class BackgroundTask:
         """
         return not self._background_task.done()
 
+    def raise_for_background_task(self):
+        """Raise the exception raised by the background task.
+
+        Raises:
+            exception: the exception raised by the
+                background task
+        """
+        if self._background_task.exception():
+            raise self._background_task.exception()
+
     def start(self) -> None:
         """Start the reader coroutine."""
         if not self.background_task_active:
@@ -97,6 +107,12 @@ class BackgroundTask:
                 f"Cancelled background task for {super()!r} after {timeout} "
                 + "second timeout.",
             )
+
+            self._background_task.cancel()
+
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.wait_for(self._background_task, 0.1)
+
             raise LinesTimeoutError(timeout) from timeout_exception
 
     @property
