@@ -3,7 +3,7 @@ import contextlib
 import re
 import time
 import typing
-from unittest.mock import DEFAULT, Mock, call
+from unittest.mock import DEFAULT, AsyncMock, Mock, call
 
 from atomiclines.lineprocessor import LineHolder, LineProcessor
 
@@ -97,6 +97,24 @@ async def test_lineholder_eq():
 async def test_lineprocessor():
     bytestream = b"hello\nworld\nok"
     processor = Mock(return_value=None)
+    line_processor = LineProcessor(MockReadable(bytestream_zero_delay(bytestream)))
+    line_processor.add_processor(processor)
+
+    async with line_processor:
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+    assert processor.call_args_list == [
+        call(LineHolder(line_match[1]))
+        for line_match in re.finditer(b"(.*?)\n", bytestream)
+    ]
+
+    # await line_processor.stop()
+
+
+async def test_lineprocessor_async():
+    bytestream = b"hello\nworld\nok"
+    processor = AsyncMock(side_effect=(True, False, None))
     line_processor = LineProcessor(MockReadable(bytestream_zero_delay(bytestream)))
     line_processor.add_processor(processor)
 

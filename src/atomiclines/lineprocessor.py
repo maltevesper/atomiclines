@@ -108,7 +108,11 @@ class LineProcessor(BackgroundTask):
             for processor in self._processors:
                 logger.debug(f"using processor {processor} on {line!r}")
 
-                if processor(line_object):
-                    break
+                if asyncio.iscoroutinefunction(processor):
+                    if await processor(line_object):
+                        break
+                else:
+                    if processor(line_object):
+                        break
 
             await asyncio.sleep(0)
