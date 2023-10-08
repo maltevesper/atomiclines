@@ -138,11 +138,11 @@ async def test_lineprocessor_remove():
     processor_b = Mock(return_value=None)
     line_processor = LineProcessor(MockReadable(bytestream.stream()))
     line_processor.add_processor(processor_a)
-    line_processor.add_processor(processor_b)
+    processor_b_handle = line_processor.add_processor(processor_b)
 
     async with line_processor:
         await asyncio.sleep(0.1)
-        line_processor.remove_processor(processor_b)
+        line_processor.remove_processor(processor_b_handle)
         bytestream.append(bytestream_extension)
         await asyncio.sleep(0.1)
 

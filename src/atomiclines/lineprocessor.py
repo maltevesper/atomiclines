@@ -1,5 +1,6 @@
 import asyncio
-from typing import Callable, TypeAlias
+from functools import wraps
+from typing import Awaitable, Callable, TypeAlias
 
 from atomiclines.atomiclinereader import AtomicLineReader, Readable
 from atomiclines.backgroundtask import BackgroundTask
@@ -39,6 +40,11 @@ class LineHolder:
 class LineProcessor(BackgroundTask):
     """Run function(s) for each incomming line."""
 
+    async_processor_type: TypeAlias = Callable[
+        [LineHolder],
+        Awaitable[bool | None],  # noqa: WPS465 this is a typehint
+    ]
+
     processor_type: TypeAlias = Callable[
         [LineHolder],
         bool | None,  # noqa: WPS465 this is a typehint
@@ -63,7 +69,9 @@ class LineProcessor(BackgroundTask):
         self._reader.start()
         super().start()
 
-    def add_processor(self, processor: processor_type) -> None:
+    def add_processor(
+        self, processor: processor_type | async_processor_type
+    ) -> async_processor_type:
         """Add a callable to process lines.
 
         Callable will be passed the line as its only argument.
@@ -72,10 +80,22 @@ class LineProcessor(BackgroundTask):
 
         Args:
             processor: a callable to process each line with
+
+        Returns:
+            the async lineprocessor (if a sync funciton was passed in, the async wrapper is returned)
         """
+        if not asyncio.iscoroutinefunction(processor):
+            original_processor = processor
+
+            @wraps(processor)
+            async def processor(lineholder: LineHolder) -> bool | None:
+                return original_processor(lineholder)
+
         self._processors.append(processor)
 
-    def remove_processor(self, processor: processor_type) -> None:
+        return processor
+
+    def remove_processor(self, processor: async_processor_type) -> None:
         """Remove a processor (only the first occurance).
 
         Args:
@@ -100,7 +120,7 @@ class LineProcessor(BackgroundTask):
         while not self._background_task_stop:
             try:
                 line = await self._reader.readline()
-            except LinesProcessError:
+            except LinesProcessError:  # TODO: is this sensible handling?
                 return
 
             line_object = LineHolder(line)
@@ -108,11 +128,7 @@ class LineProcessor(BackgroundTask):
             for processor in self._processors:
                 logger.debug(f"using processor {processor} on {line!r}")
 
-                if asyncio.iscoroutinefunction(processor):
-                    if await processor(line_object):
-                        break
-                else:
-                    if processor(line_object):
-                        break
+                if await processor(line_object):
+                    break
 
             await asyncio.sleep(0)
