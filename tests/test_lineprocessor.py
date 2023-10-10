@@ -5,6 +5,7 @@ import time
 import typing
 from unittest.mock import DEFAULT, AsyncMock, Mock, call
 
+from atomiclines.exception import LinesEOFError
 from atomiclines.lineprocessor import LineHolder, LineProcessor
 
 
@@ -58,6 +59,21 @@ async def bytestream_equal_spacing(bytesequence: bytes, interval_s: float = 0):
         await asyncio.sleep(interval_s)
 
 
+async def bytestream_line_chunked(bytesequence: bytes, interval_s: float = 0):
+    """Return lines from bytesequence and add delay between.
+
+    Args:
+        bytesequence: byte sequence to yeild from
+        interval_s: delay between bytes. Defaults to 0.
+
+    Yields:
+        bytechunks with trailing \n from bytesequence.
+    """
+    for chunk in re.split(rb"(?<=\n)", bytesequence):
+        yield chunk
+        await asyncio.sleep(interval_s)
+
+
 class MockReadable:
     """A mock readable returning data from a generator."""
 
@@ -83,7 +99,20 @@ class MockReadable:
         await asyncio.Future()  # run forever
 
 
-async def test_lineholder_eq():
+class EOFReadable:
+    """A readable which raises EOF at the end."""
+
+    def __init__(self, data_stream: typing.AsyncGenerator[bytes, None]) -> None:
+        self._data_stream = data_stream
+
+    async def read(self):
+        try:
+            return await anext(self._data_stream)
+        except StopAsyncIteration:
+            raise LinesEOFError
+
+
+async def test_lineholder_eq() -> None:
     line_a = LineHolder(b"a")
     line_b = LineHolder(b"b")
 
@@ -94,7 +123,7 @@ async def test_lineholder_eq():
     assert not line_a == b"a"
 
 
-async def test_lineprocessor():
+async def test_lineprocessor() -> None:
     bytestream = b"hello\nworld\nok"
     processor = Mock(return_value=None)
     line_processor = LineProcessor(MockReadable(bytestream_zero_delay(bytestream)))
@@ -112,7 +141,7 @@ async def test_lineprocessor():
     # await line_processor.stop()
 
 
-async def test_lineprocessor_async():
+async def test_lineprocessor_async() -> None:
     bytestream = b"hello\nworld\nok"
     processor = AsyncMock(side_effect=(True, False, None))
     line_processor = LineProcessor(MockReadable(bytestream_zero_delay(bytestream)))
@@ -130,7 +159,7 @@ async def test_lineprocessor_async():
     # await line_processor.stop()
 
 
-async def test_lineprocessor_remove():
+async def test_lineprocessor_remove() -> None:
     bytestream_start = b"hello\nworld\nok"
     bytestream_extension = b"\ngoodbye\ncruel\nworld\nnot ok"
     bytestream = RefillableBytestream(bytestream_start)
@@ -159,11 +188,11 @@ async def test_lineprocessor_remove():
     ]
 
 
-async def test_lineprocessor_no_bubble():
+async def test_lineprocessor_no_bubble() -> None:
     bytestream_start = b"hello\nworld\nok"
     bytestream = RefillableBytestream(bytestream_start)
 
-    def filtering_processor(line: LineHolder):
+    def filtering_processor(line: LineHolder) -> bool:
         return line.line == b"world"
 
     processor_a = Mock(side_effect=filtering_processor, return_value=DEFAULT)
@@ -193,7 +222,7 @@ def slow_processor(line):
     time.sleep(0.1)  # currently we do not process the lines asynchronously...
 
 
-async def test_lineprocessor_softstop():
+async def test_lineprocessor_softstop() -> None:
     # TODO: this test does not really test a lot...
     bytestream = (
         b"hello\nworld\nok\nmany\nlines\nso\nmany\nmore\nlines\ncoke\nis\nsomething\na"
@@ -212,7 +241,7 @@ async def test_lineprocessor_softstop():
     assert processor.call_count == 1
 
 
-async def test_lineprocessor_hardstop():
+async def test_lineprocessor_hardstop() -> None:
     # TODO: this test does not really test a lot...
     bytestream = (
         b"hello\nworld\nok\nmany\nlines\nso\nmany\nmore\nlines\ncoke\nis\nsomething\na"
@@ -230,7 +259,7 @@ async def test_lineprocessor_hardstop():
     )  # await stop, allows a switch and allows one item to process.
 
 
-async def test_lineprocessor_stopsignal():
+async def test_lineprocessor_stopsignal() -> None:
     bytestream = (
         b"hello\nworld\nok\nmany\nlines\nso\nmany\nmore\nlines\ncoke\nis\nsomething\na"
     )
@@ -238,7 +267,7 @@ async def test_lineprocessor_stopsignal():
         MockReadable(bytestream_equal_spacing(bytestream, 0.01)),
     )
 
-    def processor(line):
+    def processor(line) -> None:
         line_processor.signal_stop()
 
     line_processor.add_processor(processor)
@@ -249,7 +278,7 @@ async def test_lineprocessor_stopsignal():
             assert line_processor.background_task_active is False
 
 
-async def test_lineprocessor_modification():
+async def test_lineprocessor_modification() -> None:
     bytestream_start = b"hello\nworld\nok"
     bytestream = RefillableBytestream(bytestream_start)
 
@@ -271,3 +300,119 @@ async def test_lineprocessor_modification():
             bytestream_start,
         )
     ]
+
+
+async def test_lineprocessor_temporary() -> None:
+    # TODO: read a line, temporarily throw away everything line processor, read some more
+    bytestream = b"hello\nworld\nok\nmore\nd"
+    processor = Mock(return_value=None)
+    line_processor = LineProcessor(
+        MockReadable(bytestream_line_chunked(bytestream, 0.1)),
+        # EOFReadable(bytestream_line_chunked(bytestream, 0.1)),
+    )
+    line_processor.add_processor(processor)
+
+    async def dropper(line_holder):
+        return True
+
+    async with line_processor:
+        await asyncio.sleep(0.05)
+
+        with line_processor.temporary_processor(dropper):
+            await asyncio.sleep(0.2)
+
+        await asyncio.sleep(1)
+
+    assert processor.call_args_list == [
+        call(LineHolder(chunk))
+        for index, chunk in enumerate(
+            re.split(
+                rb"\n",
+                bytestream,
+            )[
+                :-1
+            ],  # Throw away trailing bytes which are not yielded by linereader
+        )
+        if index not in {1, 2}
+    ]
+
+
+async def test_lineporcessor_processes() -> None:
+    line_processor = LineProcessor(
+        MockReadable(bytestream_line_chunked(b"", 0.1)),
+    )
+
+    processor_a = line_processor.add_processor(lambda x: True)
+
+    assert [processor_a] == line_processor.processors
+
+    processor_b = line_processor.add_processor(lambda x: True)
+    processor_c = line_processor.add_processor(lambda x: True)
+
+    assert [processor_a, processor_b, processor_c] == line_processor.processors
+
+    line_processor.remove_processor(processor_b)
+
+    assert [processor_a, processor_c] == line_processor.processors
+
+
+async def test_lineporcessor_temporary_index() -> None:
+    line_processor = LineProcessor(
+        MockReadable(bytestream_line_chunked(b"", 0.1)),
+    )
+
+    processor_a = line_processor.add_processor(lambda x: True)
+
+    assert [processor_a] == line_processor.processors
+
+    async def processor_True(line):
+        return True
+
+    async def processor_False(line):
+        return False
+
+    with line_processor.temporary_processor([processor_True, processor_False]):
+        assert [
+            processor_True,
+            processor_False,
+            processor_a,
+        ] == line_processor.processors
+
+    assert [processor_a] == line_processor.processors
+
+    with line_processor.temporary_processor([processor_True, processor_False], 1):
+        assert [
+            processor_a,
+            processor_True,
+            processor_False,
+        ] == line_processor.processors
+
+    assert [processor_a] == line_processor.processors
+
+
+async def test_lineporcessor_temporary_reentrancy() -> None:
+    line_processor = LineProcessor(
+        MockReadable(bytestream_line_chunked(b"", 0.1)),
+    )
+
+    processor_a = line_processor.add_processor(lambda x: True)
+
+    assert [processor_a] == line_processor.processors
+
+    async def processor_True(line):
+        return True
+
+    async def processor_False(line):
+        return False
+
+    with line_processor.temporary_processor(processor_True):
+        assert [processor_True, processor_a] == line_processor.processors
+
+        with line_processor.temporary_processor([processor_False], 1):
+            assert [
+                processor_True,
+                processor_False,
+                processor_a,
+            ] == line_processor.processors
+
+    assert [processor_a] == line_processor.processors

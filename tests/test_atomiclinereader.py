@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import io
+import logging
 import typing
 from logging import INFO
 
@@ -248,10 +249,11 @@ async def test_stopreader_softstop():
 
 async def test_reader_exception(caplog: pytest.LogCaptureFixture):
     """Make sure a reader exception is handled correctly."""
-    with pytest.raises(RuntimeError):
-        async with AtomicLineReader(ExceptionalReadable()):
-            await asyncio.sleep(0)  # allow read to happen -> exception in task
-            await asyncio.sleep(0.1)  # allow task.done_callback to execute
+    with caplog.at_level(logging.INFO):
+        with pytest.raises(RuntimeError):
+            async with AtomicLineReader(ExceptionalReadable()):
+                await asyncio.sleep(0)  # allow read to happen -> exception in task
+                await asyncio.sleep(0.1)  # allow task.done_callback to execute
 
     assert caplog.messages[0].startswith("An error occured in the background process.")
 

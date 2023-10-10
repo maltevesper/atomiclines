@@ -1,6 +1,9 @@
 import asyncio
+from contextlib import contextmanager
 from functools import wraps
 from typing import Awaitable, Callable, TypeAlias
+
+from more_itertools import always_iterable
 
 from atomiclines.atomiclinereader import AtomicLineReader, Readable
 from atomiclines.backgroundtask import BackgroundTask
@@ -68,6 +71,30 @@ class LineProcessor(BackgroundTask):
         """
         self._reader.start()
         super().start()
+
+    @property
+    def processors(self) -> list[processor_type]:
+        """Return the list of processors.
+
+        Returns:
+            list of processors to be used
+        """
+        return self._processors
+
+    @contextmanager
+    def temporary_processor(
+        self,
+        temporary_processors: async_processor_type | list[async_processor_type],
+        index: int = 0,
+    ):
+        original_processors = self._processors.copy()
+
+        self._processors[index:index] = always_iterable(temporary_processors)
+
+        try:
+            yield
+        finally:
+            self._processors = original_processors
 
     def add_processor(
         self, processor: processor_type | async_processor_type

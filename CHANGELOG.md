@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [unreleased]
+
+LineProcessor.add_processor now returns the function actually added as a line processor.
+Since sync functions are wrapped into an async function, you have to use this return value for
+LineProcessor.remove_processor.
+It is now possible to temporarily add lineprocessors with LineProcessor.temporary_processor
+### Changed
+ - LineProcessor.add_processor wraps non async functions into async functions, returns the 
+   function added.
+
+### New
+ - LineProcessor.temporary_processor is a context manager to temporarily inject a processor using a with statement
+
 ## [0.1.1-rc3] - 2023-09-27
 Allow async callbacks for lineprocessor
 
