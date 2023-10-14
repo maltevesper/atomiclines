@@ -49,6 +49,10 @@ testpaths = [
 asyncio_mode = "auto"
 # faulthandler_timeout=5
 junit_logging = "all"
+pythonpath = "tests"
+required_plugins = [
+    "pytest-asyncio"
+]
 
 [project]
 name = "atomic-lines"

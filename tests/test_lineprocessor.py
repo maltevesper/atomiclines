@@ -1,115 +1,18 @@
 import asyncio
-import contextlib
 import re
 import time
 import typing
 from unittest.mock import DEFAULT, AsyncMock, Mock, call
 
-from atomiclines.exception import LinesEOFError
+from testhelpers.bytesources import (
+    RefillableBytestream,
+    bytestream_equal_spacing,
+    bytestream_line_chunked,
+    bytestream_zero_delay,
+)
+from testhelpers.readable import MockReadable
+
 from atomiclines.lineprocessor import LineHolder, LineProcessor
-
-
-# TODO: factor testhelper methods out in submodules
-class RefillableBytestream:
-    def __init__(self, bytesequence: bytes | bytearray) -> None:
-        self._bytesequence: bytearray = bytearray(bytesequence)
-        self._running = True
-        self._data_ready_event = asyncio.Event()
-        self._data_ready_event.set()
-
-    async def stream(self) -> typing.AsyncGenerator[bytes, None]:
-        while self._running:
-            await self._data_ready_event.wait()
-            self._data_ready_event.clear()
-            for byte in self._bytesequence:
-                yield bytes([byte])
-
-            self._bytesequence = bytearray()
-
-    def append(self, bytesequence: bytes) -> None:
-        self._bytesequence.extend(bytesequence)
-        self._data_ready_event.set()
-
-
-async def bytestream_zero_delay(bytesequence: bytes):
-    """Return single bytes from a bytes object.
-
-    Args:
-        bytesequence: bytesequence to iterate over
-
-    Yields:
-        single bytes from bytesequence
-    """
-    for byte in bytesequence:
-        yield bytes([byte])
-
-
-async def bytestream_equal_spacing(bytesequence: bytes, interval_s: float = 0):
-    """Return bytes from bytesequence and add delay between.
-
-    Args:
-        bytesequence: byte sequence to yeild from
-        interval_s: delay between bytes. Defaults to 0.
-
-    Yields:
-        single bytes from bytesequence.
-    """
-    for byte in bytesequence:
-        yield bytes([byte])
-        await asyncio.sleep(interval_s)
-
-
-async def bytestream_line_chunked(bytesequence: bytes, interval_s: float = 0):
-    """Return lines from bytesequence and add delay between.
-
-    Args:
-        bytesequence: byte sequence to yeild from
-        interval_s: delay between bytes. Defaults to 0.
-
-    Yields:
-        bytechunks with trailing \n from bytesequence.
-    """
-    for chunk in re.split(rb"(?<=\n)", bytesequence):
-        yield chunk
-        await asyncio.sleep(interval_s)
-
-
-class MockReadable:
-    """A mock readable returning data from a generator."""
-
-    def __init__(self, data_stream: typing.AsyncGenerator[bytes, None]) -> None:
-        """Initialize mock readable.
-
-        Return data from genereator, block eternally once the generator is exhausted.
-
-        Args:
-            data_stream: generator generating the data to be returned on read() calls.
-        """
-        self._data_stream = data_stream
-
-    async def read(self) -> bytes:
-        """Return next available byte from generator.
-
-        Returns:
-            bytes yielded by generator.
-        """
-        with contextlib.suppress(StopAsyncIteration):
-            return await anext(self._data_stream)
-
-        await asyncio.Future()  # run forever
-
-
-class EOFReadable:
-    """A readable which raises EOF at the end."""
-
-    def __init__(self, data_stream: typing.AsyncGenerator[bytes, None]) -> None:
-        self._data_stream = data_stream
-
-    async def read(self):
-        try:
-            return await anext(self._data_stream)
-        except StopAsyncIteration:
-            raise LinesEOFError
 
 
 async def test_lineholder_eq() -> None:
@@ -440,12 +343,8 @@ async def test_lineprocessor_processorlist_modification():
         MockReadable(bytestream_zero_delay(bytestream)),
     )
 
-    remove_this = None
-
     async def processor_self_removing(line: LineHolder):
-        line_processor.remove_processor(remove_this)
-
-    remove_this = processor_self_removing
+        line_processor.remove_processor(processor_self_removing)
 
     processor_a = Mock(return_value=None)
     processor_b = Mock(return_value=None)
