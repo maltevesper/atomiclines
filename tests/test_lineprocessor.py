@@ -356,7 +356,7 @@ async def test_lineporcessor_processes() -> None:
     assert [processor_a, processor_c] == line_processor.processors
 
 
-async def test_lineporcessor_temporary_index() -> None:
+async def test_lineprocessor_temporary_index() -> None:
     line_processor = LineProcessor(
         MockReadable(bytestream_line_chunked(b"", 0.1)),
     )
@@ -416,3 +416,54 @@ async def test_lineporcessor_temporary_reentrancy() -> None:
             ] == line_processor.processors
 
     assert [processor_a] == line_processor.processors
+
+
+async def test_lineprocessor_processorlist_modification():
+    """Test live modifcation of active processors.
+
+    Processing the list of processors could from a process could cause issues,
+    if we modify the same list as the one used for looping.
+
+    This test is supposed to check that the process immediatly after the self
+    removing process is not skipped when the process removes it self.
+
+    >>> l=[1,2,3]
+    >>> for i in l:
+    ...     if i == 1:
+    ...         l.remove(i)
+    ...     print(i)
+    1
+    3
+    """
+    bytestream = b"a\nb\n"
+    line_processor = LineProcessor(
+        MockReadable(bytestream_zero_delay(bytestream)),
+    )
+
+    remove_this = None
+
+    async def processor_self_removing(line: LineHolder):
+        line_processor.remove_processor(remove_this)
+
+    remove_this = processor_self_removing
+
+    processor_a = Mock(return_value=None)
+    processor_b = Mock(return_value=None)
+
+    line_processor.add_processor(processor_self_removing)
+    line_processor.add_processor(processor_a)
+    line_processor.add_processor(processor_b)
+
+    async with line_processor:
+        await asyncio.sleep(0.1)
+
+    expected_calls = [
+        call(LineHolder(line_match[1]))
+        for line_match in re.finditer(
+            b"(.*?)\n",
+            bytestream,
+        )
+    ]
+
+    assert expected_calls == processor_a.call_args_list
+    assert expected_calls == processor_b.call_args_list
