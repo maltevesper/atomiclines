@@ -152,7 +152,7 @@ class LineProcessor(BackgroundTask):
 
             line_object = LineHolder(line)
 
-            for processor in self._processors:
+            for processor in self._processors.copy():
                 logger.debug(f"using processor {processor} on {line!r}")
 
                 if await processor(line_object):
