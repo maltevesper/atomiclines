@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.1-rc5] - 2023-10-15
+## [0.1.1-rc5] - 2023-10-17
 
 LineProcessor.add_processor no longer accepts non async functions. Use `LineProcessor.add_processor(wrap_as_async(lambda x: True))` if synchronous functions need to be used as processors.
 
