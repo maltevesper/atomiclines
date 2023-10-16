@@ -39,6 +39,12 @@ class LineHolder:
 
         return False
 
+    def __str__(self) -> str:
+        return self.line.decode()
+
+    def __repr__(self) -> str:
+        return f"<LineHolder({self.line.decode()})>"
+
 
 class LineProcessor(BackgroundTask):
     """Run function(s) for each incomming line."""
@@ -111,12 +117,17 @@ class LineProcessor(BackgroundTask):
         Returns:
             the async lineprocessor (if a sync funciton was passed in, the async wrapper is returned)
         """
-        if not asyncio.iscoroutinefunction(processor):
+        if not asyncio.iscoroutinefunction(processor) and not (
+            callable(processor) and asyncio.iscoroutinefunction(processor.__call__)
+        ):
             original_processor = processor
 
             @wraps(processor)
             async def processor(lineholder: LineHolder) -> bool | None:
                 return original_processor(lineholder)
+
+        if hasattr(processor, "_lineprocessor"):
+            processor._lineprocessor = self
 
         self._processors.append(processor)
 

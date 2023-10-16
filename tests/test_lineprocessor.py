@@ -1,7 +1,6 @@
 import asyncio
 import re
 import time
-import typing
 from unittest.mock import DEFAULT, AsyncMock, Mock, call
 
 from testhelpers.bytesources import (
@@ -13,6 +12,16 @@ from testhelpers.bytesources import (
 from testhelpers.readable import MockReadable
 
 from atomiclines.lineprocessor import LineHolder, LineProcessor
+
+
+async def test_lineholder_str() -> None:
+    line = "atomic"
+    assert str(LineHolder(line.encode())) == line
+
+
+async def test_lineholder_repr() -> None:
+    line = "lines"
+    assert repr(LineHolder(line.encode())) == f"<LineHolder({line})>"
 
 
 async def test_lineholder_eq() -> None:
