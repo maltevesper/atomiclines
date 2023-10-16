@@ -7,9 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.1-rc5] - 2023-10-15
 
+LineProcessor.add_processor no longer accepts non async functions. Use `LineProcessor.add_processor(wrap_as_async(lambda x: True))` if synchronous functions need to be used as processors.
+
+### New
+
+ - The processors module provides processor helpers. Currently only a ProcessUntil helper is defined, which
+   processes until the line meets a predicate. (Name might be changed to `process_until` for consistency.)
+ - See `LineProcessingFuncBase` if you want to write processors which interact with the parent LineProcessor instance.
+
 ### Fixed
 
  - LineProcessor no longer skips processors if other processors are removed during processing
+
+### Changed
+
+ - LineProcessor.add_processor no longer wraps non async functions into async functions,
+   use wrap_as_async explicitly to add non async function to add_processor
 
 ## [0.1.1-rc4] - 2023-10-11
 

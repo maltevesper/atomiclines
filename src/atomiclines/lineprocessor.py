@@ -49,14 +49,9 @@ class LineHolder:
 class LineProcessor(BackgroundTask):
     """Run function(s) for each incomming line."""
 
-    async_processor_type: TypeAlias = Callable[
-        [LineHolder],
-        Awaitable[bool | None],  # noqa: WPS465 this is a typehint
-    ]
-
     processor_type: TypeAlias = Callable[
         [LineHolder],
-        bool | None,  # noqa: WPS465 this is a typehint
+        Awaitable[bool | None],  # noqa: WPS465 this is a typehint
     ]
 
     def __init__(self, streamable: Readable) -> None:
@@ -90,7 +85,7 @@ class LineProcessor(BackgroundTask):
     @contextmanager
     def temporary_processor(
         self,
-        temporary_processors: async_processor_type | list[async_processor_type],
+        temporary_processors: processor_type | list[processor_type],
         index: int = 0,
     ):
         original_processors = self._processors.copy()
@@ -103,8 +98,8 @@ class LineProcessor(BackgroundTask):
             self._processors = original_processors
 
     def add_processor(
-        self, processor: processor_type | async_processor_type
-    ) -> async_processor_type:
+        self, processor: processor_type | processor_type
+    ) -> processor_type:
         """Add a callable to process lines.
 
         Callable will be passed the line as its only argument.
@@ -115,16 +110,8 @@ class LineProcessor(BackgroundTask):
             processor: a callable to process each line with
 
         Returns:
-            the async lineprocessor (if a sync funciton was passed in, the async wrapper is returned)
+            the async lineprocessor
         """
-        if not asyncio.iscoroutinefunction(processor) and not (
-            callable(processor) and asyncio.iscoroutinefunction(processor.__call__)
-        ):
-            original_processor = processor
-
-            @wraps(processor)
-            async def processor(lineholder: LineHolder) -> bool | None:
-                return original_processor(lineholder)
 
         if hasattr(processor, "_lineprocessor"):
             processor._lineprocessor = self
@@ -133,7 +120,7 @@ class LineProcessor(BackgroundTask):
 
         return processor
 
-    def remove_processor(self, processor: async_processor_type) -> None:
+    def remove_processor(self, processor: processor_type) -> None:
         """Remove a processor (only the first occurance).
 
         Args:
@@ -170,3 +157,16 @@ class LineProcessor(BackgroundTask):
                     break
 
             await asyncio.sleep(0)
+
+
+def wrap_as_async(
+    processor: Callable[
+        [LineHolder],
+        bool | None,  # noqa: WPS465 this is a typehint
+    ],
+) -> LineProcessor.processor_type:
+    @wraps(processor)
+    async def async_processor(lineholder: LineHolder) -> bool | None:
+        return processor(lineholder)
+
+    return async_processor

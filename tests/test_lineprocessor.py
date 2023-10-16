@@ -11,7 +11,7 @@ from testhelpers.bytesources import (
 )
 from testhelpers.readable import MockReadable
 
-from atomiclines.lineprocessor import LineHolder, LineProcessor
+from atomiclines.lineprocessor import LineHolder, LineProcessor, wrap_as_async
 
 
 async def test_lineholder_str() -> None:
@@ -37,25 +37,7 @@ async def test_lineholder_eq() -> None:
 
 async def test_lineprocessor() -> None:
     bytestream = b"hello\nworld\nok"
-    processor = Mock(return_value=None)
-    line_processor = LineProcessor(MockReadable(bytestream_zero_delay(bytestream)))
-    line_processor.add_processor(processor)
-
-    async with line_processor:
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
-
-    assert processor.call_args_list == [
-        call(LineHolder(line_match[1]))
-        for line_match in re.finditer(b"(.*?)\n", bytestream)
-    ]
-
-    # await line_processor.stop()
-
-
-async def test_lineprocessor_async() -> None:
-    bytestream = b"hello\nworld\nok"
-    processor = AsyncMock(side_effect=(True, False, None))
+    processor = AsyncMock(return_value=None)
     line_processor = LineProcessor(MockReadable(bytestream_zero_delay(bytestream)))
     line_processor.add_processor(processor)
 
@@ -75,8 +57,8 @@ async def test_lineprocessor_remove() -> None:
     bytestream_start = b"hello\nworld\nok"
     bytestream_extension = b"\ngoodbye\ncruel\nworld\nnot ok"
     bytestream = RefillableBytestream(bytestream_start)
-    processor_a = Mock(return_value=None)
-    processor_b = Mock(return_value=None)
+    processor_a = AsyncMock(return_value=None)
+    processor_b = AsyncMock(return_value=None)
     line_processor = LineProcessor(MockReadable(bytestream.stream()))
     line_processor.add_processor(processor_a)
     processor_b_handle = line_processor.add_processor(processor_b)
@@ -107,8 +89,8 @@ async def test_lineprocessor_no_bubble() -> None:
     def filtering_processor(line: LineHolder) -> bool:
         return line.line == b"world"
 
-    processor_a = Mock(side_effect=filtering_processor, return_value=DEFAULT)
-    processor_b = Mock(return_value=None)
+    processor_a = AsyncMock(side_effect=filtering_processor, return_value=DEFAULT)
+    processor_b = AsyncMock(return_value=None)
     line_processor = LineProcessor(MockReadable(bytestream.stream()))
     line_processor.add_processor(processor_a)
     line_processor.add_processor(processor_b)
@@ -142,7 +124,7 @@ async def test_lineprocessor_softstop() -> None:
     line_processor = LineProcessor(
         MockReadable(bytestream_equal_spacing(bytestream, 0.01)),
     )
-    processor = Mock(side_effect=slow_processor, return_value=DEFAULT)
+    processor = AsyncMock(side_effect=slow_processor, return_value=DEFAULT)
     line_processor.add_processor(processor)
 
     async with asyncio.timeout(0.2):
@@ -159,7 +141,7 @@ async def test_lineprocessor_hardstop() -> None:
         b"hello\nworld\nok\nmany\nlines\nso\nmany\nmore\nlines\ncoke\nis\nsomething\na"
     )
     line_processor = LineProcessor(MockReadable(bytestream_zero_delay(bytestream)))
-    processor = Mock(side_effect=slow_processor, return_value=DEFAULT)
+    processor = AsyncMock(side_effect=slow_processor, return_value=DEFAULT)
     line_processor.add_processor(processor)
 
     async with asyncio.timeout(0.2):
@@ -179,7 +161,7 @@ async def test_lineprocessor_stopsignal() -> None:
         MockReadable(bytestream_equal_spacing(bytestream, 0.01)),
     )
 
-    def processor(line) -> None:
+    async def processor(line) -> None:
         line_processor.signal_stop()
 
     line_processor.add_processor(processor)
@@ -194,10 +176,10 @@ async def test_lineprocessor_modification() -> None:
     bytestream_start = b"hello\nworld\nok"
     bytestream = RefillableBytestream(bytestream_start)
 
-    def uppercase_processor(line: LineHolder):
+    async def uppercase_processor(line: LineHolder):
         line.line = line.line.upper()
 
-    mock_postprocessor = Mock(return_value=None)
+    mock_postprocessor = AsyncMock(return_value=None)
     line_processor = LineProcessor(MockReadable(bytestream.stream()))
     line_processor.add_processor(uppercase_processor)
     line_processor.add_processor(mock_postprocessor)
@@ -217,7 +199,7 @@ async def test_lineprocessor_modification() -> None:
 async def test_lineprocessor_temporary() -> None:
     # TODO: read a line, temporarily throw away everything line processor, read some more
     bytestream = b"hello\nworld\nok\nmore\nd"
-    processor = Mock(return_value=None)
+    processor = AsyncMock(return_value=None)
     line_processor = LineProcessor(
         MockReadable(bytestream_line_chunked(bytestream, 0.1)),
         # EOFReadable(bytestream_line_chunked(bytestream, 0.1)),
@@ -355,8 +337,8 @@ async def test_lineprocessor_processorlist_modification():
     async def processor_self_removing(line: LineHolder):
         line_processor.remove_processor(processor_self_removing)
 
-    processor_a = Mock(return_value=None)
-    processor_b = Mock(return_value=None)
+    processor_a = AsyncMock(return_value=None)
+    processor_b = AsyncMock(return_value=None)
 
     line_processor.add_processor(processor_self_removing)
     line_processor.add_processor(processor_a)
@@ -375,3 +357,26 @@ async def test_lineprocessor_processorlist_modification():
 
     assert expected_calls == processor_a.call_args_list
     assert expected_calls == processor_b.call_args_list
+
+
+async def test_wrap_as_async():
+    def identity(x):
+        return x
+
+    for x in (1, None, "42"):
+        assert identity(x) == await wrap_as_async(identity)(x)
+
+
+async def test_apply_wrap_as_async():
+    bytestream = b"hello\nworld\nok"
+    processor = Mock(return_value=None)
+    line_processor = LineProcessor(MockReadable(bytestream_zero_delay(bytestream)))
+    line_processor.add_processor(wrap_as_async(processor))
+
+    async with line_processor:
+        await asyncio.sleep(0)
+
+    assert processor.call_args_list == [
+        call(LineHolder(line_match[1]))
+        for line_match in re.finditer(b"(.*?)\n", bytestream)
+    ]

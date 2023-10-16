@@ -1,6 +1,6 @@
 import asyncio
 import re
-from unittest.mock import Mock, call
+from unittest.mock import AsyncMock, call
 
 import pytest
 
@@ -19,7 +19,7 @@ async def test_processor_process_until():
         b"hello\nworld\nok\nmany\nlines\nso\nmany\nmore\nlines\ncoke\nis\nsomething\na"
     )
     line_processor = LineProcessor(MockReadable(bytestream_zero_delay(bytestream)))
-    processor_capture = Mock(return_value=None)
+    processor_capture = AsyncMock(return_value=None)
     line_processor.add_processor(ProcessUntil(drop_all, regex_predicate(b"ok")))
     line_processor.add_processor(processor_capture)
 
@@ -40,7 +40,7 @@ async def test_processor_process_until_exclusive():
         b"hello\nworld\nok\nmany\nlines\nso\nmany\nmore\nlines\ncoke\nis\nsomething\na"
     )
     line_processor = LineProcessor(MockReadable(bytestream_zero_delay(bytestream)))
-    processor_capture = Mock(return_value=None)
+    processor_capture = AsyncMock(return_value=None)
     line_processor.add_processor(ProcessUntil(drop_all, regex_predicate(b"ok"), False))
     line_processor.add_processor(processor_capture)
 

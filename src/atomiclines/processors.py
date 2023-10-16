@@ -42,7 +42,7 @@ class LineProcessingFuncBase(ABC):
     DO not add the same instance to different LineProcessors.
     """
 
-    def __init__(self, processor: LineProcessor.async_processor_type) -> None:
+    def __init__(self, processor: LineProcessor.processor_type) -> None:
         """Initialization.
 
         Args:
@@ -52,7 +52,7 @@ class LineProcessingFuncBase(ABC):
         self._lineprocessor: LineProcessor | None = (
             None  # TODO: should we call this parent or something else?
         )
-        self._processor: LineProcessor.async_processor_type = processor
+        self._processor: LineProcessor.processor_type = processor
 
     @property
     def lineprocessor(self) -> LineProcessor:
@@ -85,7 +85,7 @@ class ProcessUntil(LineProcessingFuncBase):
 
     def __init__(
         self,
-        processor: LineProcessor.async_processor_type,
+        processor: LineProcessor.processor_type,
         predicate: async_predicate_type,
         inclusive: bool = True,
     ) -> None:
