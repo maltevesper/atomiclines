@@ -1,7 +1,7 @@
 import asyncio
 from contextlib import contextmanager
 from functools import wraps
-from typing import Awaitable, Callable, TypeAlias
+from typing import Awaitable, Callable, Iterator, Self, TypeAlias
 
 from more_itertools import always_iterable
 
@@ -40,9 +40,19 @@ class LineHolder:
         return False
 
     def __str__(self) -> str:
+        """Generate string representation.
+
+        Returns:
+            String representation
+        """
         return self.line.decode()
 
     def __repr__(self) -> str:
+        """Representation.
+
+        Returns:
+            programmatic representation.
+        """
         return f"<LineHolder({self.line.decode()})>"
 
 
@@ -87,18 +97,29 @@ class LineProcessor(BackgroundTask):
         self,
         temporary_processors: processor_type | list[processor_type],
         index: int = 0,
-    ):
+    ) -> Iterator[Self]:
+        """Contextmanager to temporarily attach a processor.
+
+        Args:
+            temporary_processors: processor to attach temporarily
+            index: Position into which the processor is inserted.
+                   Defaults to 0 (first processor).
+
+        Yields:
+            self
+        """
         original_processors = self._processors.copy()
 
         self._processors[index:index] = always_iterable(temporary_processors)
 
         try:
-            yield
+            yield self
         finally:
             self._processors = original_processors
 
     def add_processor(
-        self, processor: processor_type | processor_type
+        self,
+        processor: processor_type | processor_type,
     ) -> processor_type:
         """Add a callable to process lines.
 
@@ -112,7 +133,6 @@ class LineProcessor(BackgroundTask):
         Returns:
             the async lineprocessor
         """
-
         if hasattr(processor, "_lineprocessor"):
             processor._lineprocessor = self
 
@@ -160,11 +180,17 @@ class LineProcessor(BackgroundTask):
 
 
 def wrap_as_async(
-    processor: Callable[
-        [LineHolder],
-        bool | None,  # noqa: WPS465 this is a typehint
-    ],
+    processor: Callable[[LineHolder], bool | None],
 ) -> LineProcessor.processor_type:
+    """Decorator wrap a sync processor into an async function.
+
+    Args:
+        processor: processor to wrap
+
+    Returns:
+        Async wrapper of processor
+    """
+
     @wraps(processor)
     async def async_processor(lineholder: LineHolder) -> bool | None:
         return processor(lineholder)

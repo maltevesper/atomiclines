@@ -223,9 +223,7 @@ async def test_lineprocessor_temporary() -> None:
             re.split(
                 rb"\n",
                 bytestream,
-            )[
-                :-1
-            ],  # Throw away trailing bytes which are not yielded by linereader
+            )[:-1],  # Throw away trailing bytes which are not yielded by linereader
         )
         if index not in {1, 2}
     ]

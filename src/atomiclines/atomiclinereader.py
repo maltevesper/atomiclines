@@ -56,6 +56,8 @@ class AtomicLineReader(BackgroundTask):
         Raises:
             LinesTimeoutError: if the buffer does not contain an end of line character
                 before the timeout expires
+            LinesProcessError: the reader background process stopped without generating
+                an exception
 
         Returns:
             the next line from the buffer (!without the eol character)
@@ -68,7 +70,8 @@ class AtomicLineReader(BackgroundTask):
                     raise LinesTimeoutError(timeout)
 
                 self.raise_for_background_task()
-                raise LinesProcessError()  # pragma: no cover the background task on the line before should always raise
+                raise LinesProcessError()  # pragma: no cover the background task on
+                # the line before should always raise
                 # TODO: asyncio.IncompleteReadError(self._buffer.copy(), None)
         else:
             await self._wait_for_line(timeout)
@@ -96,6 +99,13 @@ class AtomicLineReader(BackgroundTask):
         await super().stop(timeout)
 
     async def _background_job(self) -> None:
+        """Read data into buffer.
+
+        Continiously read data into the buffer as a backgorund process.
+
+        Raises:
+            eof_error: The input sources has reached end of file (EOF).
+        """
         eof_error: LinesEOFError | None = None
 
         while not self._background_task_stop:
@@ -109,7 +119,7 @@ class AtomicLineReader(BackgroundTask):
                     b""  # ensure that the following code does not assume any bytes read
                 )
 
-                if len(self._buffer) and self._buffer[-1:] != self._eol:
+                if len(self._buffer) and not self._buffer.endswith(self._eol):
                     self._buffer.extend(self._eol)
             else:
                 if not len(bytes_read):
@@ -140,7 +150,8 @@ class AtomicLineReader(BackgroundTask):
                 if not self.background_task_active:
                     self.raise_for_background_task()
 
-                    raise LinesProcessError()  # In case the background task stopped without raising an exception
+                    raise LinesProcessError()  # In case the background task stopped
+                    # without raising an exception
 
                 await self._event_byte_received.wait()
                 self._event_byte_received.clear()

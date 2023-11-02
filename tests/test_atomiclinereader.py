@@ -74,7 +74,9 @@ async def test_readline_eof():
 
             reached_end = True
 
-    assert reached_end  # make sure enough of the test code inside the pytest.raises is executed
+    assert (
+        reached_end
+    )  # make sure enough of the test code inside the pytest.raises is executed
 
 
 async def test_readline_eof_eol():

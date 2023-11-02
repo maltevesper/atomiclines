@@ -1,16 +1,17 @@
 import asyncio
 import re
+from typing import Literal
 from unittest.mock import AsyncMock, call
 
 import pytest
 
 from atomiclines.lineprocessor import LineHolder, LineProcessor
-from atomiclines.processors import LineProcessingFuncBase, ProcessUntil, regex_predicate
+from atomiclines.processors import ProcessUntil, regex_predicate
 from tests.testhelpers.bytesources import bytestream_zero_delay
 from tests.testhelpers.readable import MockReadable
 
 
-async def drop_all(line_holder: LineHolder):
+async def drop_all(line_holder: LineHolder) -> Literal[True]:
     return True
 
 
