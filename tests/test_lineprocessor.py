@@ -5,7 +5,12 @@ import time
 from typing import Literal, TypeVar
 from unittest.mock import DEFAULT, AsyncMock, Mock, call
 
-from atomiclines.lineprocessor import LineHolder, LineProcessor, wrap_as_async
+from atomiclines.lineprocessor import (
+    LineHolder,
+    LineProcessingFuncBase,
+    LineProcessor,
+    wrap_as_async,
+)
 from testhelpers.bytesources import (
     RefillableBytestream,
     bytestream_equal_spacing,
@@ -409,3 +414,24 @@ async def test_apply_wrap_as_async() -> None:
         call(LineHolder(line_match[1]))
         for line_match in re.finditer(b"(.*?)\n", bytestream)
     ]
+
+
+class ProcessingObject(LineProcessingFuncBase):
+    """Simple processing object test."""
+
+    async def __call__(self, _line_holder: LineHolder) -> bool | None:
+        """Processing function implementation."""
+        return True
+
+
+async def test_LineProcessingFuncBase_temporary() -> None:
+    """Test LineProcessorFuncBase with temporary()."""
+    line_processor = LineProcessor(
+        MockReadable(bytestream_zero_delay(b"")),
+    )
+
+    processor = ProcessingObject(processor_False)
+
+    async with line_processor:
+        with line_processor.temporary_processor(processor):
+            processor.lineprocessor.remove_processor(processor)
