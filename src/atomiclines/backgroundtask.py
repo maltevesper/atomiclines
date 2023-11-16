@@ -1,8 +1,13 @@
+"""Manage backgroundtasks gracefully.
+
+Think C++ JThread.
+"""
+
 import asyncio
 import contextlib
 import traceback
 from types import TracebackType
-from typing import Any, Protocol, Self, Type
+from typing import Protocol, Self, TypeVar
 
 from atomiclines.exception import LinesTimeoutError
 from atomiclines.log import logger
@@ -15,10 +20,13 @@ class Readable(Protocol):
         """Read one byte."""
 
 
-class DoneTask(asyncio.Future):
+T = TypeVar("T")
+
+
+class DoneTask(asyncio.Future[T]):
     """A Future which has completed."""
 
-    def __init__(self, future_result: Any = None) -> None:
+    def __init__(self, future_result: T = None) -> None:
         """Initialize completed Future.
 
         Args:
@@ -47,7 +55,7 @@ class BackgroundTask:
         """
         return not self._background_task.done()
 
-    def raise_for_background_task(self):
+    def raise_for_background_task(self) -> None:
         """Raise the exception raised by the background task.
 
         Raises:
@@ -55,7 +63,7 @@ class BackgroundTask:
                 background task
         """
         if self._background_task.exception():
-            raise self._background_task.exception()
+            raise self._background_task.exception()  # noqa: RSE102  actually function call needed on asyncio task to retrieve exception object
 
     def start(self) -> None:
         """Start the reader coroutine."""
@@ -105,7 +113,7 @@ class BackgroundTask:
         except TimeoutError as timeout_exception:
             logger.debug(
                 f"Cancelled background task for {super()!r} after {timeout} "
-                + "second timeout.",
+                "second timeout.",
             )
 
             self._background_task.cancel()
@@ -137,7 +145,7 @@ class BackgroundTask:
 
     async def __aexit__(
         self,
-        _exc_type: Type[BaseException] | None,
+        _exc_type: type[BaseException] | None,
         _exc_val: BaseException | None,
         _exc_tb: TracebackType | None,
     ) -> None:
@@ -156,7 +164,7 @@ class BackgroundTask:
 
         Raises:
             NotImplementedError: _description_
-        """  # noqa: D401
+        """
         raise NotImplementedError
 
     def _job_exit_check(self, task: asyncio.Task) -> None:
@@ -168,5 +176,5 @@ class BackgroundTask:
                 logger.error(traceback.format_exception(task.exception()))
                 # exception will be raise when task is awaited, no need to raise here
 
-        # TODO limit restart attempts based on time to last crash and number of attempts
-        # iff self._reader_active: self.start_reader()
+        # TODO: limit restart attempts based on time to last crash and number of
+        # attempts iff self._reader_active: self.start_reader()

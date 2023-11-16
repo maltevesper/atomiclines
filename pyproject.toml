@@ -4,12 +4,7 @@ dev = [
     "pytest>=7.2.1",
     "black>=22.12.0",
     "wemake-python-styleguide>=0.17.0",
-    "flake8>=4.0.1",
-    "flake8-noqa>=1.3.2",
-    "isort>=5.11.4",
-    "bandit>=1.7.4",
     "mypy>=0.991",
-    "pep8-naming>=0.13.2",
     "pytest-randomly>=3.12.0",
     "pytest-asyncio>=0.21.1",
     "pytest-cov>=4.1.0",
@@ -25,7 +20,33 @@ dev = [
     "devtools>=0.12.2",
     "pre-commit>=3.5.0",
     "ruff>=0.1.3",
+    "more-itertools>=10.1.0",
 ]
+
+[tool.ruff]
+select = [
+    "ALL",
+]
+ignore = [
+    "ANN101", # do not mandate self typeannotations (autoinfers of typecheckers is good enough
+    "TD002", # do not require TODO author
+    "TD003", # do not require TODO issue links
+    "FIX002", # For now, we allow TODOs
+    # Formatter struggles with these: https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+    # "COM812", # We would like trailing commas, but the formatter struggles
+    # "ISC001", # We do not like single line string concatenation, but the formatter complains
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101", # allow assert in tests
+    "N802", # allow wrong test function names, to allow def test_ClassName_x()
+    "SIM117", # allow cascaded with statements, in tests we often test `with timeout(): with x: ...` blocks
+              # while in production code there would usually be other statements inside for tests this looks cleaner
+]
+
+[tool.ruff.pydocstyle]
+convention = "google"
 
 [tool.black]
 line-length = 88

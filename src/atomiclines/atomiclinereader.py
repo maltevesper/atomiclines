@@ -1,3 +1,5 @@
+"""Read lines from streams atomically."""
+
 import asyncio
 import typing
 
@@ -15,7 +17,7 @@ class Readable(typing.Protocol):
 
 # immitate StreamReader.readuntil
 class AtomicLineReader(BackgroundTask):
-    """Read lines atomically."""
+    """Read lines from streams atomically."""
 
     _reader_task: asyncio.Task
     _reader_active: bool
@@ -28,13 +30,13 @@ class AtomicLineReader(BackgroundTask):
         Args:
             streamable: object which provides an async read method, returning one byte
         """
-        self._buffer = bytearray()  # TODO ringbuffer, that exposes a memoryview
+        self._buffer = bytearray()  # TODO: ringbuffer, that exposes a memoryview
         self._event_byte_received = asyncio.Event()
         self._streamable = streamable
         self._reader_active = False
         self._eol = b"\n"
         self._instance_id = self._instances
-        AtomicLineReader._instances += 1  # noqa: WPS437 - "private" access is intended
+        AtomicLineReader._instances += 1
         super().__init__()
         # TODO: allow setting a default timeout
 
@@ -70,7 +72,7 @@ class AtomicLineReader(BackgroundTask):
                     raise LinesTimeoutError(timeout)
 
                 self.raise_for_background_task()
-                raise LinesProcessError()  # pragma: no cover the background task on
+                raise LinesProcessError  # pragma: no cover the background task on
                 # the line before should always raise
                 # TODO: asyncio.IncompleteReadError(self._buffer.copy(), None)
         else:
@@ -87,7 +89,7 @@ class AtomicLineReader(BackgroundTask):
         Prefer using this as a context manager whenever you can.
         """
         super().start()
-        self.task.add_done_callback(lambda task: self._event_byte_received.set())
+        self.task.add_done_callback(lambda _task: self._event_byte_received.set())
 
     async def stop(self, timeout: float = 0) -> None:
         """Stop reading.
@@ -150,7 +152,7 @@ class AtomicLineReader(BackgroundTask):
                 if not self.background_task_active:
                     self.raise_for_background_task()
 
-                    raise LinesProcessError()  # In case the background task stopped
+                    raise LinesProcessError  # In case the background task stopped
                     # without raising an exception
 
                 await self._event_byte_received.wait()

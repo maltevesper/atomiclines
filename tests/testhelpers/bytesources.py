@@ -1,16 +1,31 @@
+"""Byte generators to be used as datasources."""
 import asyncio
 import re
-from typing import AsyncGenerator
+from collections.abc import AsyncIterator
+
+from more_itertools import chunked
 
 
 class RefillableBytestream:
+    """Bytestream, which can be extended during use."""
+
     def __init__(self, bytesequence: bytes | bytearray) -> None:
+        """Initialize RefillableBytestream.
+
+        Args:
+            bytesequence: initial bytes to steam.
+        """
         self._bytesequence: bytearray = bytearray(bytesequence)
         self._running = True
         self._data_ready_event = asyncio.Event()
         self._data_ready_event.set()
 
-    async def stream(self) -> AsyncGenerator[bytes, None]:
+    async def stream(self) -> AsyncIterator[bytes]:
+        """Stream bytes out.
+
+        Yields:
+            _Bytes (one by one) from the bytesequence provided in init/append.
+        """
         while self._running:
             await self._data_ready_event.wait()
             self._data_ready_event.clear()
@@ -20,11 +35,16 @@ class RefillableBytestream:
             self._bytesequence = bytearray()
 
     def append(self, bytesequence: bytes) -> None:
+        """Add additional bytes to be streamed.
+
+        Args:
+            bytesequence: bytes to append.
+        """
         self._bytesequence.extend(bytesequence)
         self._data_ready_event.set()
 
 
-async def bytestream_zero_delay(bytesequence: bytes):
+async def bytestream_zero_delay(bytesequence: bytes) -> AsyncIterator[bytes]:
     """Return single bytes from a bytes object.
 
     Args:
@@ -37,7 +57,10 @@ async def bytestream_zero_delay(bytesequence: bytes):
         yield bytes([byte])
 
 
-async def bytestream_equal_spacing(bytesequence: bytes, interval_s: float = 0):
+async def bytestream_equal_spacing(
+    bytesequence: bytes,
+    interval_s: float = 0,
+) -> AsyncIterator[bytes]:
     """Return bytes from bytesequence and add delay between.
 
     Args:
@@ -52,8 +75,11 @@ async def bytestream_equal_spacing(bytesequence: bytes, interval_s: float = 0):
         await asyncio.sleep(interval_s)
 
 
-async def bytestream_line_chunked(bytesequence: bytes, interval_s: float = 0):
-    """Return lines from bytesequence and add delay between.
+async def bytestream_line_chunked(
+    bytesequence: bytes,
+    interval_s: float = 0,
+) -> AsyncIterator[bytes]:
+    r"""Return lines from bytesequence and add delay between.
 
     Args:
         bytesequence: byte sequence to yeild from
@@ -67,7 +93,10 @@ async def bytestream_line_chunked(bytesequence: bytes, interval_s: float = 0):
         await asyncio.sleep(interval_s)
 
 
-async def multibytestream_equal_spacing(bytesequence: bytes, interval_s: float = 0):
+async def multibytestream_equal_spacing(
+    bytesequence: bytes,
+    interval_s: float = 0,
+) -> AsyncIterator[bytes]:
     """Return bytes from bytesequence and add delay between.
 
     Args:
@@ -77,14 +106,12 @@ async def multibytestream_equal_spacing(bytesequence: bytes, interval_s: float =
     Yields:
         two bytes from bytesequence.
     """
-    byteiter = iter(bytesequence)
-
-    for byte_chunk in zip(byteiter, byteiter):
+    for byte_chunk in chunked(bytesequence, 2):
         yield bytes(byte_chunk)
         await asyncio.sleep(interval_s)
 
 
-async def bytestream_zero_reads(bytesequence: bytes):
+async def bytestream_zero_reads(bytesequence: bytes) -> AsyncIterator[bytes]:
     """Return single bytes from a bytes object and empty reads inbetween.
 
     Args:
@@ -95,4 +122,4 @@ async def bytestream_zero_reads(bytesequence: bytes):
     """
     for byte in bytesequence:
         yield bytes([byte])
-        yield bytes()
+        yield b""

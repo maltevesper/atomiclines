@@ -1,5 +1,15 @@
-class LinesException(Exception):
-    """Base exception class for atomiclines library."""
+"""Exceptions for atomiclines."""
+
+
+class LinesException(  # noqa: N818 omitt error suffix like the std library base
+    # Exception
+    Exception,
+):
+    """Base exception class for atomiclines library.
+
+    All exceptions we expect should be based on this,
+    so a library user can `except LinesException`.
+    """
 
 
 class LinesEOFError(LinesException):

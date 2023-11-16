@@ -1,7 +1,9 @@
+"""Test exception classes."""
 from atomiclines.exception import LinesTimeoutError
 
 
-def test_timeout():
+def test_timeout() -> None:
+    """Test timeout exception."""
     timeout = 1.5
     lines_timeout = LinesTimeoutError(timeout)
 

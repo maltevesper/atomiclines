@@ -1,7 +1,10 @@
+"""Process each line received with multiple functions."""
 import asyncio
+from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from functools import wraps
-from typing import Awaitable, Callable, Iterator, Self, TypeAlias
+from typing import Self, TypeAlias
 
 from more_itertools import always_iterable
 
@@ -59,9 +62,9 @@ class LineHolder:
 class LineProcessor(BackgroundTask):
     """Run function(s) for each incomming line."""
 
-    processor_type: TypeAlias = Callable[
+    ProcessorType: TypeAlias = Callable[
         [LineHolder],
-        Awaitable[bool | None],  # noqa: WPS465 this is a typehint
+        Awaitable[bool | None],
     ]
 
     def __init__(self, streamable: Readable) -> None:
@@ -72,7 +75,7 @@ class LineProcessor(BackgroundTask):
         """
         self._streamable = streamable
         self._reader = AtomicLineReader(streamable)
-        self._processors: list[LineProcessor.processor_type] = []
+        self._processors: list[LineProcessor.ProcessorType] = []
         super().__init__()
 
     def start(self) -> None:
@@ -84,7 +87,7 @@ class LineProcessor(BackgroundTask):
         super().start()
 
     @property
-    def processors(self) -> list[processor_type]:
+    def processors(self) -> list[ProcessorType]:
         """Return the list of processors.
 
         Returns:
@@ -95,7 +98,7 @@ class LineProcessor(BackgroundTask):
     @contextmanager
     def temporary_processor(
         self,
-        temporary_processors: processor_type | list[processor_type],
+        temporary_processors: ProcessorType | list[ProcessorType],
         index: int = 0,
     ) -> Iterator[Self]:
         """Contextmanager to temporarily attach a processor.
@@ -119,8 +122,8 @@ class LineProcessor(BackgroundTask):
 
     def add_processor(
         self,
-        processor: processor_type | processor_type,
-    ) -> processor_type:
+        processor: ProcessorType,
+    ) -> ProcessorType:
         """Add a callable to process lines.
 
         Callable will be passed the line as its only argument.
@@ -133,14 +136,14 @@ class LineProcessor(BackgroundTask):
         Returns:
             the async lineprocessor
         """
-        if hasattr(processor, "_lineprocessor"):
-            processor._lineprocessor = self
+        if isinstance(processor, LineProcessingFuncBase):
+            processor.init_lineprocessor(self)
 
         self._processors.append(processor)
 
         return processor
 
-    def remove_processor(self, processor: processor_type) -> None:
+    def remove_processor(self, processor: ProcessorType) -> None:
         """Remove a processor (only the first occurance).
 
         Args:
@@ -181,7 +184,7 @@ class LineProcessor(BackgroundTask):
 
 def wrap_as_async(
     processor: Callable[[LineHolder], bool | None],
-) -> LineProcessor.processor_type:
+) -> LineProcessor.ProcessorType:
     """Decorator wrap a sync processor into an async function.
 
     Args:
@@ -196,3 +199,77 @@ def wrap_as_async(
         return processor(lineholder)
 
     return async_processor
+
+
+class LineProcessingFuncBase(ABC):
+    """Base Class for Callable object processor function for LineProcessor.
+
+    Provides a back reference to the LineProcessor in the `lineprocessor` property.
+    DO not add the same instance to different LineProcessors.
+    """
+
+    def __init__(self, processor: LineProcessor.ProcessorType) -> None:
+        """Initialization.
+
+        Args:
+            processor: Processor function to apply when this object is __call__()ed.
+        """
+        self._lineprocessor: LineProcessor | None = (
+            None  # TODO: should we call this parent or something else?
+        )
+        self._processor: LineProcessor.ProcessorType = processor
+
+    def init_lineprocessor(self, line_processor: LineProcessor) -> None:
+        """Bind to lineprocessor.
+
+        Args:
+            line_processor: LineProcessor to bind to.
+
+        Raises:
+            RuntimeError: LineProcessingFuncBase can not be bound to multiple instances,
+                thus binding more than once is disallowed.
+        """
+        if self._lineprocessor is not None:
+            message = (
+                f"{self} is already bound to LineProcessor {self._lineprocessor}. "
+                f"Can't rebind to {line_processor}.\n"
+                "Do not reuse LineProcessingFuncBase instances."
+            )
+            raise RuntimeError(message)
+
+        self._lineprocessor = line_processor
+
+    @property
+    def lineprocessor(self) -> LineProcessor:
+        """Get the LineProcessor the LineProcessing function is attached too.
+
+        Raises:
+            RuntimeError: When the property is accessed before the LineProcessor
+                initialized it (during the addProcessor call)
+
+        Returns:
+            the parent LineProcessor object the processor is assigned to.
+        """
+        if self._lineprocessor is None:
+            message = "Backreference self._lineprocessor was never initialized."
+            raise RuntimeError(  # TODO: custom exception
+                message,
+            )
+
+        return self._lineprocessor
+
+    @abstractmethod
+    async def __call__(self, line_holder: LineHolder) -> bool | None:
+        """Implement actual lineprocessing.
+
+        Args:
+            line_holder: line to be processed
+
+        Raises:
+            NotImplementedError: this is an abstract method
+
+        Returns:
+            boolean / None, True if line should not be processed by any
+            subsequent processors.
+        """
+        raise NotImplementedError
