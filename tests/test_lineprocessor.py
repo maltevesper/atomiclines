@@ -94,7 +94,7 @@ async def test_lineprocessor_remove() -> None:
     processor_b = AsyncMock(return_value=None)
     line_processor = LineProcessor(MockReadable(bytestream.stream()))
     line_processor.add_processor(processor_a)
-    processor_b_handle = line_processor.add_processor(processor_b)
+    processor_b_handle = line_processor.add_processor(processor_b)[0]
 
     async with line_processor:
         await asyncio.sleep(0.1)
@@ -273,12 +273,12 @@ async def test_lineporcessor_add_remove() -> None:
         MockReadable(bytestream_line_chunked(b"", 0.1)),
     )
 
-    processor_a = line_processor.add_processor(processor_True)
+    processor_a = line_processor.add_processor(processor_True)[0]
 
     assert [processor_a] == line_processor.processors
 
-    processor_b = line_processor.add_processor(processor_True)
-    processor_c = line_processor.add_processor(processor_True)
+    processor_b = line_processor.add_processor(processor_True)[0]
+    processor_c = line_processor.add_processor(processor_True)[0]
 
     assert [processor_a, processor_b, processor_c] == line_processor.processors
 
@@ -293,7 +293,7 @@ async def test_lineprocessor_temporary_index() -> None:
         MockReadable(bytestream_line_chunked(b"", 0.1)),
     )
 
-    processor_a = line_processor.add_processor(processor_True)
+    processor_a = line_processor.add_processor(processor_True)[0]
 
     assert [processor_a] == line_processor.processors
 
@@ -322,7 +322,7 @@ async def test_lineporcessor_temporary_reentrancy() -> None:
         MockReadable(bytestream_line_chunked(b"", 0.1)),
     )
 
-    processor_a = line_processor.add_processor(processor_True)
+    processor_a = line_processor.add_processor(processor_True)[0]
 
     assert [processor_a] == line_processor.processors
 
@@ -430,7 +430,7 @@ async def test_LineProcessingFuncBase_temporary() -> None:
         MockReadable(bytestream_zero_delay(b"")),
     )
 
-    processor = ProcessingObject(processor_False)
+    processor = ProcessingObject()
 
     async with line_processor:
         with line_processor.temporary_processor(processor):

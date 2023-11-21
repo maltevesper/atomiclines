@@ -6,8 +6,6 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import Self, TypeAlias
 
-from more_itertools import always_iterable
-
 from atomiclines.atomiclinereader import AtomicLineReader, Readable
 from atomiclines.backgroundtask import BackgroundTask
 from atomiclines.exception import LinesProcessError
@@ -99,21 +97,21 @@ class LineProcessor(BackgroundTask):
     def temporary_processor(
         self,
         temporary_processors: ProcessorType | list[ProcessorType],
-        index: int = 0,
+        index: int | None = 0,
     ) -> Iterator[Self]:
         """Contextmanager to temporarily attach a processor.
 
         Args:
             temporary_processors: processor to attach temporarily
             index: Position into which the processor is inserted.
-                   Defaults to 0 (first processor).
+                   Defaults to 0 (first processor). Use None to append.
 
         Yields:
             self
         """
         original_processors = self._processors.copy()
 
-        self._processors[index:index] = always_iterable(temporary_processors)
+        self.add_processor(temporary_processors, index)
 
         try:
             yield self
@@ -122,7 +120,8 @@ class LineProcessor(BackgroundTask):
 
     def add_processor(
         self,
-        processor: ProcessorType,
+        processors: ProcessorType | list[ProcessorType],
+        index: int | None = None,
     ) -> ProcessorType:
         """Add a callable to process lines.
 
@@ -131,17 +130,27 @@ class LineProcessor(BackgroundTask):
         processors registered later will not be presented with the current line.
 
         Args:
-            processor: a callable to process each line with
+            processors: a callable to process each line with
+            index: position into which to insert processors (None = end)
 
         Returns:
             the async lineprocessor
         """
-        if isinstance(processor, LineProcessingFuncBase):
-            processor.init_lineprocessor(self)
+        # `always_iterable(processors))` fails with AsyncMock which is considered
+        # iterable...
+        if not isinstance(processors, list):
+            processors = [processors]
 
-        self._processors.append(processor)
+        for processor in processors:
+            if isinstance(processor, LineProcessingFuncBase):
+                processor.init_lineprocessor(self)
 
-        return processor
+        if index is None:
+            index = len(self._processors)
+
+        self._processors[index:index] = processors
+
+        return processors
 
     def remove_processor(self, processor: ProcessorType) -> None:
         """Remove a processor (only the first occurance).
@@ -208,16 +217,11 @@ class LineProcessingFuncBase(ABC):
     DO not add the same instance to different LineProcessors.
     """
 
-    def __init__(self, processor: LineProcessor.ProcessorType) -> None:
-        """Initialization.
-
-        Args:
-            processor: Processor function to apply when this object is __call__()ed.
-        """
+    def __init__(self) -> None:
+        """Initialization."""
         self._lineprocessor: LineProcessor | None = (
             None  # TODO: should we call this parent or something else?
         )
-        self._processor: LineProcessor.ProcessorType = processor
 
     def init_lineprocessor(self, line_processor: LineProcessor) -> None:
         """Bind to lineprocessor.

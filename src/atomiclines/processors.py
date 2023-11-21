@@ -58,7 +58,8 @@ class ProcessUntil(LineProcessingFuncBase):
             inclusive: If true the line matching the predicate is also fed to the
                 processor. Defaults to True.
         """
-        super().__init__(processor)
+        super().__init__()
+        self._processor = processor
         self._predicate = predicate
         self._inclusive = inclusive
 
